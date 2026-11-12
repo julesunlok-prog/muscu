@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Muscu</title>
+<meta name="description" content="Journal de musculation avec conseils de progression par exercice.">
+<meta name="theme-color" content="#F7F7F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1A1A1A" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Muscu">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icones/icone-192.png">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main id="vue"></main>
+<div id="reprise" class="reprise hidden"><button class="btn btn-primary btn-bloc"><span>Séance en cours</span> · Reprendre</button></div>
+<div id="minuteur" class="minuteur hidden" role="timer" aria-live="off">
+  <div class="temps"></div>
+  <button data-repos="-15" aria-label="Retirer 15 secondes">−15</button>
+  <button data-repos="15" aria-label="Ajouter 15 secondes">+15</button>
+  <button data-repos="passer">Passer</button>
+  <div class="rail"></div>
+</div>
+<nav id="onglets" class="onglets" aria-label="Navigation"></nav>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
