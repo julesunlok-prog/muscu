@@ -1,8 +1,18 @@
 // Écran Entraînement : programmes, « Débuter », séance vide, édition d'un programme.
 import { demarrer } from '../seance.js';
+import { NOM_MUSCLE } from '../profils.js';
 import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
+
+// Résumé d'un programme : muscles principaux sans doublon (les trois deltoïdes deviennent « épaules »), puis exercices et séries.
+export function resume(t, E) {
+  const muscles = [...new Set(t.items.map(i => E[i.exerciseId]?.musclePrincipal).filter(Boolean)
+    .map(m => m.startsWith('delt_') ? 'Épaules' : NOM_MUSCLE[m]))];
+  const series = t.items.reduce((n, i) => n + (i.series ?? 0), 0);
+  return { muscles: muscles.map((m, k) => k ? m.toLowerCase() : m).join(', '),
+    detail: `${t.items.length} exercice${t.items.length > 1 ? 's' : ''} · ${series} séries` };
+}
 
 export function render(el, ctx) {
   const { state } = ctx;
@@ -18,12 +28,12 @@ export function render(el, ctx) {
       <p class="muted" style="margin:0 0 12px;font-size:14px">Lance la démo pour voir 12 semaines de séances fictives, les conseils de charge et toutes les analyses. Tes données ne sont pas touchées.</p>
       <button class="btn btn-secondary btn-bloc" data-lancer-demo>Voir la démo</button></section>` : ''}
     ${state.templates.length ? state.templates.map(t => {
-      const d = derniere(state, t.id), suivant = t.id === prochain && !state.enCours;
+      const d = derniere(state, t.id), suivant = t.id === prochain && !state.enCours, r = resume(t, E);
       return `<section class="card">
         <div class="card-tete"><div><h2 class="card-title">${esc(t.nom)}</h2>
           <div class="faint">${suivant ? '<b class="suivant">Prochaine séance</b> · ' : ''}${d ? `Dernière : ${fmtDate(d)}` : 'Jamais fait'}</div></div>
           <button class="btn btn-texte btn-sm btn-icone" data-act="editer" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">${icon('plusieurs')}</button></div>
-        <p class="muted" style="font-size:14px;margin:0 0 14px">${t.items.map(i => esc(E[i.exerciseId]?.nom ?? '?') + (i.supersetGroupe ? ` <span class="puce">${esc(i.supersetGroupe)}</span>` : '')).join(' · ')}</p>
+        <p style="font-size:15px;margin:0 0 14px">${esc(r.muscles || 'Aucun exercice')}<span class="faint" style="display:block;margin-top:2px">${r.detail}</span></p>
         <button class="btn ${suivant ? 'btn-primary' : 'btn-secondary'} btn-bloc" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
       </section>`;
     }).join('') : `<div class="empty-state"><div class="empty-title">Aucun programme</div><div class="empty-sub">Crée ton premier programme pour débuter une séance.</div></div>`}
