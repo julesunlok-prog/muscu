@@ -7,6 +7,8 @@ const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).
 export function render(el, ctx) {
   const { state } = ctx;
   const E = Object.fromEntries(state.exercises.map(e => [e.id, e]));
+  // Prochaine séance de la rotation : le programme fait il y a le plus longtemps (jamais fait en premier). Seul lui a le bouton plein.
+  const prochain = [...state.templates].sort((a, b) => (derniere(state, a.id) ?? '').localeCompare(derniere(state, b.id) ?? ''))[0]?.id;
   el.innerHTML = `
     <div class="page-header"><h1 class="page-title">Entraînement</h1>
       <button class="btn btn-secondary btn-sm" data-act="nouveau">${icon('plus')}Programme</button></div>
@@ -15,17 +17,17 @@ export function render(el, ctx) {
     ${!ctx.demo && !state.workouts.length && !state.enCours ? `<section class="card"><h2 class="card-title" style="margin-bottom:6px">Découvre l’app</h2>
       <p class="muted" style="margin:0 0 12px;font-size:14px">Lance la démo pour voir 12 semaines de séances fictives, les conseils de charge et toutes les analyses. Tes données ne sont pas touchées.</p>
       <button class="btn btn-secondary btn-bloc" data-lancer-demo>Voir la démo</button></section>` : ''}
-    <button class="btn btn-secondary btn-bloc" data-act="vide" style="margin-bottom:16px">Séance vide</button>
     ${state.templates.length ? state.templates.map(t => {
-      const d = derniere(state, t.id);
+      const d = derniere(state, t.id), suivant = t.id === prochain && !state.enCours;
       return `<section class="card">
         <div class="card-tete"><div><h2 class="card-title">${esc(t.nom)}</h2>
-          <div class="faint">${d ? `Dernière séance : ${fmtDate(d)}` : 'Jamais fait'}</div></div>
+          <div class="faint">${suivant ? '<b class="suivant">Prochaine séance</b> · ' : ''}${d ? `Dernière : ${fmtDate(d)}` : 'Jamais fait'}</div></div>
           <button class="btn btn-texte btn-sm btn-icone" data-act="editer" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">${icon('plusieurs')}</button></div>
         <p class="muted" style="font-size:14px;margin:0 0 14px">${t.items.map(i => esc(E[i.exerciseId]?.nom ?? '?') + (i.supersetGroupe ? ` <span class="puce">${esc(i.supersetGroupe)}</span>` : '')).join(' · ')}</p>
-        <button class="btn btn-primary btn-bloc" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
+        <button class="btn ${suivant ? 'btn-primary' : 'btn-secondary'} btn-bloc" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
       </section>`;
-    }).join('') : `<div class="empty-state"><div class="empty-title">Aucun programme</div><div class="empty-sub">Crée ton premier programme pour débuter une séance.</div></div>`}`;
+    }).join('') : `<div class="empty-state"><div class="empty-title">Aucun programme</div><div class="empty-sub">Crée ton premier programme pour débuter une séance.</div></div>`}
+    <button class="btn btn-texte btn-bloc" data-act="vide">Séance vide</button>`;
 
   el.onclick = async e => {
     const b = e.target.closest('[data-act]');

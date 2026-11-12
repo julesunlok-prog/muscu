@@ -1,5 +1,5 @@
 // Hors ligne : tout le code de l'app est pré-caché ; les polices Google sont mises en cache au premier chargement.
-const VERSION = 'muscu-v3';
+const VERSION = 'muscu-v4';
 const FICHIERS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icones/icone-192.png', 'icones/icone-512.png', 'icones/apple-touch-icon.png',

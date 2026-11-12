@@ -133,7 +133,7 @@ function fiche(el, ctx, ex) {
       <div class="kpi"><div class="kpi-label">1RM estimé</div><div class="kpi-value">${fmtNum(derE1)} <small>kg</small></div></div>
       <div class="kpi"><div class="kpi-label">Record 1RM estimé</div><div class="kpi-value">${fmtNum(record)} <small>kg</small></div></div>
       <div class="kpi"><div class="kpi-label">Charge max</div><div class="kpi-value">${fmtNum(kgMax)} <small>kg</small></div></div>
-      <div class="kpi"><div class="kpi-label">Tendance <span class="badge">INDICATIF</span></div><div class="kpi-value">${p ? `+${fmtNum(p.parSemaine)}` : '—'} <small>${p?.type === 'reps' ? 'rep/sem.' : 'kg/sem.'}</small></div></div>
+      <div class="kpi"><div class="kpi-label">Tendance <span class="badge">Indicatif</span></div><div class="kpi-value">${p ? `+${fmtNum(p.parSemaine)}` : '—'} <small>${p?.type === 'reps' ? 'rep/sem.' : 'kg/sem.'}</small></div></div>
     </div>
     ${p?.type === 'e1rm' ? `<p class="faint" style="margin-top:-6px">1RM estimé prévu : ${fmtNum(p.s4)} kg (± ${fmtNum(p.m4)}) à 4 sem. · ${fmtNum(p.s8)} kg (± ${fmtNum(p.m8)}) à 8 sem. · ${fmtNum(p.s12)} kg (± ${fmtNum(p.m12)}) à 12 sem., calculé sur ${p.n} séances.</p>`
       : p?.type === 'reps' ? `<p class="faint" style="margin-top:-6px">≈ ${fmtNum(p.s4, 0)} reps (± ${fmtNum(p.m4, 0)}) à ${fmtKg(p.kg)} kg dans 4 semaines (au-delà de 12 reps, le 1RM estimé n’est pas fiable).</p>`

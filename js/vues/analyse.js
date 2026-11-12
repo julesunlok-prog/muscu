@@ -83,7 +83,7 @@ function volume(state, ordre, cibles, prio) {
       <button data-mode="prevu" aria-pressed="${mode === 'prevu'}">Programme prévu</button></div>
     ${ordre.map(m => {
       const c = cibles[m], max = Math.max(c * 1.5, v[m]), p = prio.includes(m);
-      return `<div class="jauge"><div class="jauge-tete"><span>${esc(NOM_MUSCLE[m])} ${p ? '<span class="badge acc">PRIORITAIRE</span>' : ''}</span>
+      return `<div class="jauge"><div class="jauge-tete"><span>${esc(NOM_MUSCLE[m])} ${p ? '<span class="badge acc">Prioritaire</span>' : ''}</span>
         <span class="${v[m] >= c ? '' : 'muted'}">${fmtNum(v[m])} / ${c}</span></div>
         <div class="jauge-rail"><div class="jauge-plein ${v[m] >= c ? 'pos' : p ? 'warn' : ''}" style="width:${v[m] / max * 100}%"></div>
         <div class="jauge-cible" style="left:${c / max * 100}%" title="Cible"></div></div></div>`;
@@ -119,7 +119,7 @@ function predictions(state) {
     const s = sessionsDe(state, e.id);
     return { e, p: prediction(s), v: verifierPrediction(s) };
   }).filter(x => x.p);
-  return carte('Prédictions <span class="badge">INDICATIF</span>', `
+  return carte('Prédictions <span class="badge">Indicatif</span>', `
     ${liste.length ? `<ul class="liste">${liste.map(({ e, p, v }) => `<li><a class="liste-ligne" href="#/exercices/${encodeURIComponent(e.id)}">
       <div style="min-width:0"><b>${esc(e.nom)}</b><div class="faint">${p.type === 'e1rm'
         ? `1RM estimé ${fmtNum(p.maintenant)} kg → ${fmtNum(p.s4)} kg (± ${fmtNum(p.m4)}) dans 4 semaines`
@@ -170,7 +170,7 @@ function balance(state, now) {
   lundis(now, 4).forEach(d => Object.entries(volumeSemaine(state, d.toISOString())).forEach(([m, v]) => { moy[m] = (moy[m] ?? 0) + v / 4; }));
   const reel = equilibre(moy);
   const ligne = (nom, e) => `<li class="liste-ligne" style="cursor:default"><span>${nom}</span><span>${e.ratio == null ? '—' : `<b>${fmtNum(e.ratio)}</b> <span class="faint">(${fmtNum(e.tirage)} tirage / ${fmtNum(e.poussee)} poussée)</span>`}</span></li>`;
-  return carte('Équilibre tirage / poussée <span class="badge">REPÈRE</span>', `<ul class="liste">${ligne('Programme', prevu)}${ligne('Réel, 4 semaines', reel)}</ul>
+  return carte('Équilibre tirage / poussée <span class="badge">Repère</span>', `<ul class="liste">${ligne('Programme', prevu)}${ligne('Réel, 4 semaines', reel)}</ul>
     <p class="faint" style="margin:8px 0 0">Séries de tirage (dos, deltoïde postérieur, biceps) divisées par séries de poussée (pectoraux, deltoïde antérieur, triceps). Les coachs conseillent entre 1 et 2, surtout avec des épaules dominantes. <b>Aucune étude ne valide un ratio précis</b> : prends-le comme un repère.</p>
     ${liensSources(['S21'])}`);
 }
