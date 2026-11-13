@@ -2,7 +2,7 @@
 import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CLE } from './store.js';
 import { resteRepos, ajusterRepos, passerRepos } from './seance.js';
 import { genererDemo } from './demo.js';
-import { icon, toast, fmtChrono, esc, confirmer, telecharger, ticPartout } from './ui.js';
+import { icon, toast, fmtChrono, esc, confirmer, telecharger, ticPartout, fermerFeuille } from './ui.js';
 import * as programmes from './vues/programmes.js';
 import * as seance from './vues/seance.js';
 import * as historique from './vues/historique.js';
@@ -92,6 +92,7 @@ function afficher() {
   const y = window.scrollY, meme = vue.dataset.vue === nom + (params.id ?? '');
   vue.dataset.vue = nom + (params.id ?? '');
   vue.style.animation = meme ? 'none' : '';
+  vue.toggleAttribute('data-meme', meme); // même écran réaffiché : pas d'animation d'entrée des cartes
   VUES[nom].render(vue, ctx, params);
   if (reel) vue.insertAdjacentHTML('afterbegin', `<div class="bandeau-demo" role="status"><span><b>Mode démo</b> · données fictives, rien n’est enregistré.</span>
     <button class="btn btn-secondary btn-sm" data-quitter-demo>Quitter</button></div>`);
@@ -125,9 +126,17 @@ function bip(notes) {
 }
 const SON_DEBUT = [[0, 660], [0.12, 990]], SON_FIN = [[0, 880], [0.25, 880], [0.5, 1320]];
 
+// Tout ce qui affiche le repos se met à jour ici, sans réafficher la séance (le clavier ou la roulette resteraient sinon fermés) :
+// [data-repos-temps] reçoit le décompte, [data-repos-rail] la part restante, [data-repos-on] les classes « actif » et « pause ».
 function majMinuteur() {
-  const w = state.enCours;
-  if (!w?.repos) { barre.classList.add('hidden'); return; }
+  const w = state.enCours, repos = w?.repos;
+  document.querySelectorAll('[data-repos-on]').forEach(x => { x.classList.toggle('actif', !!repos); x.classList.toggle('pause', repos?.pause != null); });
+  if (!repos) {
+    barre.classList.add('hidden');
+    document.querySelectorAll('[data-repos-temps]').forEach(x => { x.textContent = ''; });
+    document.querySelectorAll('.feuille[data-repos-feuille]').forEach(fermerFeuille);
+    return;
+  }
   const reste = resteRepos(w);
   // fin − durée ne bouge pas avec ±15 s : c'est l'instant de départ du repos.
   const debut = w.repos.fin - w.repos.duree * 1000;
@@ -139,9 +148,13 @@ function majMinuteur() {
     document.getElementById('reprise').classList.toggle('hidden', route().nom === 'seance');
     return;
   }
-  barre.classList.remove('hidden');
-  barre.querySelector('.temps').innerHTML = `${fmtChrono(reste)}<small>repos</small>`;
-  barre.querySelector('.rail').style.width = `${Math.min(100, (1 - reste / w.repos.duree) * 100)}%`;
+  const temps = fmtChrono(reste), part = Math.min(100, reste / repos.duree * 100);
+  document.querySelectorAll('[data-repos-temps]').forEach(x => { x.textContent = temps; });
+  document.querySelectorAll('[data-repos-rail]').forEach(x => { x.style.width = `${part}%`; });
+  // Pendant la séance, le repos s'affiche dans l'en-tête et entre les séries : la barre flottante sert aux autres onglets.
+  barre.classList.toggle('hidden', route().nom === 'seance');
+  barre.querySelector('.temps').innerHTML = `${temps}<small>${repos.pause != null ? 'pause' : 'repos'}</small>`;
+  barre.querySelector('.rail').style.width = `${100 - part}%`;
 }
 barre.addEventListener('click', e => {
   const a = e.target.closest('[data-repos]')?.dataset.repos;

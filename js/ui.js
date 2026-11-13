@@ -32,6 +32,7 @@ const PATHS = {
   alerte: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   telecharger: 'M12 3v12M7 10l5 5 5-5M5 21h14',
   importer: 'M12 15V3M7 8l5-5 5 5M5 21h14',
+  chrono: 'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM12 9v4l2.5 2M9.5 2.5h5',
   poubelle: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
 };
 export const icon = (nom, cls = 'icone') =>
@@ -52,21 +53,25 @@ export function toast(msg, type = 'success') {
 
 const voile = () => document.body.appendChild(Object.assign(document.createElement('div'), { className: 'voile' }));
 
-export function confirmer(message, { titre = 'Confirmer ?', ok = 'Confirmer', danger = false } = {}) {
+export const confirmer = (message, { titre = 'Confirmer ?', ok = 'Confirmer', danger = false } = {}) =>
+  choisir(message, { titre, choix: [['non', 'Retour', 'btn-texte'], ['oui', ok, danger ? 'btn-danger-plein' : 'btn-primary']] }).then(r => r === 'oui');
+
+// Fenêtre à plusieurs choix : choix = [[id, libellé, classe du bouton], …]. Renvoie l'id choisi, ou null (Échap, voile).
+// Au-delà de deux choix, les boutons s'empilent ; le focus va sur le choix principal (le dernier à deux, le premier sinon).
+export function choisir(message, { titre, choix }) {
   return new Promise(resolve => {
-    const v = voile();
+    const v = voile(), pile = choix.length > 2;
     const f = document.createElement('div');
     f.className = 'fenetre'; f.setAttribute('role', 'alertdialog'); f.setAttribute('aria-modal', 'true');
-    f.innerHTML = `<h2>${esc(titre)}</h2><p>${esc(message)}</p><div class="actions">
-      <button class="btn btn-texte" data-r="0">Retour</button>
-      <button class="btn ${danger ? 'btn-danger-plein' : 'btn-primary'}" data-r="1">${esc(ok)}</button></div>`;
+    f.innerHTML = `<h2>${esc(titre)}</h2><p>${esc(message)}</p><div class="actions ${pile ? 'pile' : ''}">
+      ${choix.map(([id, lib, cls]) => `<button class="btn ${cls}" data-r="${esc(id)}">${esc(lib)}</button>`).join('')}</div>`;
     const fin = r => { v.remove(); f.remove(); document.removeEventListener('keydown', clavier); resolve(r); };
-    const clavier = e => { if (e.key === 'Escape') fin(false); };
-    f.onclick = e => { const b = e.target.closest('[data-r]'); if (b) fin(b.dataset.r === '1'); };
-    v.onclick = () => fin(false);
+    const clavier = e => { if (e.key === 'Escape') fin(null); };
+    f.onclick = e => { const b = e.target.closest('[data-r]'); if (b) fin(b.dataset.r); };
+    v.onclick = () => fin(null);
     document.addEventListener('keydown', clavier);
     document.body.appendChild(f);
-    f.querySelector('[data-r="1"]').focus();
+    f.querySelectorAll('[data-r]')[pile ? 0 : choix.length - 1].focus();
   });
 }
 

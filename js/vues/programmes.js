@@ -29,7 +29,7 @@ export function render(el, ctx) {
       <button class="btn btn-secondary btn-bloc" data-lancer-demo>Voir la démo</button></section>` : ''}
     ${state.templates.length ? state.templates.map(t => {
       const d = derniere(state, t.id), suivant = t.id === prochain && !state.enCours, r = resume(t, E);
-      return `<section class="card">
+      return `<section class="card programme" data-act="apercu" data-id="${esc(t.id)}">
         <div class="card-tete"><div><h2 class="card-title">${esc(t.nom)}</h2>
           <div class="faint">${suivant ? '<b class="suivant">Prochaine séance</b> · ' : ''}${d ? `Dernière : ${fmtDate(d)}` : 'Jamais fait'}</div></div>
           <button class="btn btn-texte btn-sm btn-icone" data-act="editer" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">${icon('plusieurs')}</button></div>
@@ -44,14 +44,34 @@ export function render(el, ctx) {
     if (!b) return;
     const { act, id } = b.dataset;
     if (act === 'reprendre') return ctx.aller('#/seance');
-    if (act === 'debuter' || act === 'vide') {
-      if (state.enCours && !await confirmer(`« ${state.enCours.nom} » est déjà en cours. La remplacer par une nouvelle séance ? Ce qui n’a pas été terminé sera perdu.`, { titre: 'Remplacer la séance en cours ?', ok: 'Remplacer', danger: true })) return;
-      ctx.maj(s => ({ ...s, enCours: demarrer(s, act === 'vide' ? null : id, new Date()) }), { rendre: false });
-      return ctx.aller('#/seance');
-    }
+    if (act === 'debuter' || act === 'vide') return debuter(ctx, act === 'vide' ? null : id);
+    if (act === 'apercu') return apercu(ctx, state.templates.find(t => t.id === id), E);
     if (act === 'editer') return editer(ctx, state.templates.find(t => t.id === id));
     if (act === 'nouveau') return editer(ctx, { id: 't' + Date.now(), nom: '', items: [] }, true);
   };
+}
+
+async function debuter(ctx, id) {
+  const { state } = ctx;
+  if (state.enCours && !await confirmer(`« ${state.enCours.nom} » est déjà en cours. La remplacer par une nouvelle séance ? Ce qui n’a pas été terminé sera perdu.`, { titre: 'Remplacer la séance en cours ?', ok: 'Remplacer', danger: true })) return;
+  ctx.maj(s => ({ ...s, enCours: demarrer(s, id, new Date()) }), { rendre: false });
+  ctx.aller('#/seance');
+}
+
+// Toucher la carte d'un programme : ses exercices (« 3 × Développé… ») et le bouton Débuter.
+function apercu(ctx, t, E) {
+  const d = derniere(ctx.state, t.id);
+  const f = ouvrirFeuille({ titre: t.nom, corps: `<p class="faint" style="margin:0 0 8px">${d ? `Dernière fois : ${fmtDate(d)}` : 'Jamais fait'}</p>
+    <ul class="liste">${t.items.map(i => `<li class="liste-ligne" style="cursor:default"><span><b>${i.series} × ${esc(E[i.exerciseId]?.nom ?? '?')}</b>
+      <span class="faint" style="display:block">${esc(NOM_MUSCLE[E[i.exerciseId]?.musclePrincipal] ?? '')}${i.supersetGroupe ? ` · superset ${esc(i.supersetGroupe)}` : ''}</span></span></li>`).join('')}</ul>`,
+    pied: '<button class="btn btn-texte" data-p="editer">Modifier</button><button class="btn btn-primary" data-p="debuter">Débuter</button>' });
+  f.addEventListener('click', e => {
+    const p = e.target.closest('[data-p]')?.dataset.p;
+    if (!p) return;
+    fermerFeuille(f);
+    if (p === 'debuter') debuter(ctx, t.id);
+    if (p === 'editer') editer(ctx, t);
+  });
 }
 
 function editer(ctx, original, nouveau = false) {

@@ -1,32 +1,60 @@
 // Séance en cours (spec §4.2) : l'écran le plus important. Une série conforme au conseil = un seul toucher (✓).
+// Repos affiché entre les séries (trait « 2:30 » qu'on touche pour changer le temps, barre qui se vide après avoir coché),
+// minuteur dans l'en-tête, poignée pour réduire la séance, écran « Bravo » à la fin.
 import { cocher, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
-  supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance } from '../seance.js';
-import { conseil, sessionsDe } from '../moteur.js';
-import { esc, icon, fmtKg, fmtNum, fmtDuree, ouvrirFeuille, fermerFeuille, confirmer, toast, champDuree, lireDuree } from '../ui.js';
+  supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
+  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos } from '../seance.js';
+import { conseil, sessionsDe, e1rm } from '../moteur.js';
+import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
+  champDuree, lireDuree, valeurDuree } from '../ui.js';
 
-let horloge = null;
+let horloge = null, vientDeCocher = null;
+const fmtEcoule = s => s < 3600 ? fmtChrono(s) : `${Math.floor(s / 3600)}:${fmtChrono(s % 3600).padStart(5, '0')}`;
 
 export function render(el, ctx) {
   const { state } = ctx, w = state.enCours;
   const E = Object.fromEntries(state.exercises.map(e => [e.id, e]));
+  const reste = resteRepos(w);
+  el.style.transform = '';
   el.innerHTML = `
-    <header class="seance-tete"><div><h1>${esc(w.nom)}</h1><div class="chrono" data-chrono></div></div>
-      <button class="btn btn-primary btn-sm" data-act="terminer">Terminer</button></header>
+    <header class="seance-tete" data-tete>
+      <button class="poignee" data-act="reduire" aria-label="Réduire la séance"><span></span></button>
+      <div class="seance-barre">
+        <button class="repos-pilule ${w.repos ? 'actif' : ''} ${w.repos?.pause != null ? 'pause' : ''}" data-act="repos" data-repos-on aria-label="Minuteur de repos">
+          ${icon('chrono')}<span data-repos-temps>${w.repos ? fmtChrono(reste) : ''}</span></button>
+        <span class="chrono" data-chrono aria-label="Durée de la séance"></span>
+        <button class="btn btn-primary btn-sm" data-act="terminer">Terminer</button>
+      </div>
+    </header>
+    <h1 class="seance-titre">${esc(w.nom)}</h1>
+    <div class="faint seance-date">${esc(fmtDateLongue(w.debut))}</div>
     ${w.entrees.map((e, ei) => carte(state, E[e.exerciseId], e, ei)).join('')}
     <button class="ajouter" data-act="ajouter-ex" style="margin-bottom:12px">+ Exercice</button>
     <button class="btn btn-danger btn-bloc" data-act="annuler">Annuler la séance</button>`;
+  vientDeCocher = null;
 
   clearInterval(horloge);
   const chrono = el.querySelector('[data-chrono]');
-  const tic = () => { if (!chrono.isConnected) return clearInterval(horloge); chrono.textContent = fmtDuree(Date.now() - Date.parse(w.debut)); };
-  tic(); horloge = setInterval(tic, 15000);
+  const majChrono = () => { if (!chrono.isConnected) return clearInterval(horloge); chrono.textContent = fmtEcoule(Math.floor((Date.now() - Date.parse(w.debut)) / 1000)); };
+  majChrono(); horloge = setInterval(majChrono, 1000);
+
+  glisserPourReduire(el, ctx);
 
   // Saisie : on sauvegarde à chaque frappe sans réafficher, pour garder le clavier ouvert.
-  el.oninput = e => {
+  // Le trait de repos cache un champ « heure » (roulette iOS) : on ne réaffiche pas non plus, sinon la roulette se fermerait.
+  el.oninput = el.onchange = e => {
     const i = e.target.closest('input[data-champ]');
-    if (!i) return;
-    const { ei, si, champ } = i.dataset;
-    ctx.maj(s => ({ ...s, enCours: modifierSerie(s.enCours, +ei, +si, champ, lireNombre(i.value)) }), { rendre: false });
+    if (i) {
+      const { ei, si, champ } = i.dataset;
+      return ctx.maj(s => ({ ...s, enCours: modifierSerie(s.enCours, +ei, +si, champ, lireNombre(i.value)) }), { rendre: false });
+    }
+    const t = e.target.closest('input[data-repos-ex]');
+    const r = t && lireDuree(t);
+    if (r == null) return;
+    const id = ctx.state.enCours.entrees[+t.dataset.reposEx].exerciseId;
+    ctx.maj(s => ({ ...s, exercises: s.exercises.map(x => x.id === id ? { ...x, reposSec: r } : x) }), { rendre: false });
+    el.querySelectorAll(`[data-repos-txt="${t.dataset.reposEx}"]`).forEach(x => { x.textContent = fmtChrono(r); });
+    el.querySelectorAll(`input[data-repos-ex="${t.dataset.reposEx}"]`).forEach(x => { if (x !== t) x.value = valeurDuree(r); });
   };
 
   el.onclick = async e => {
@@ -36,6 +64,7 @@ export function render(el, ctx) {
     const majSeance = fn => ctx.maj(s => ({ ...s, enCours: fn(s.enCours, s) }));
     if (act === 'coche') {
       const avant = ctx.state.enCours.entrees[ei].series[si];
+      vientDeCocher = `${ei}-${si}`;
       majSeance((w, s) => cocher(w, ei, si, s, new Date()));
       if (!avant.faite && !ctx.state.enCours.entrees[ei].series[si].faite) {
         toast('Indique la charge et les reps avant de cocher.', 'info');
@@ -46,6 +75,8 @@ export function render(el, ctx) {
     if (act === 'serie') menuSerie(ctx, ei, si);
     if (act === 'menu-ex') menuExercice(ctx, ei);
     if (act === 'ajouter-ex') choisirExercice(ctx);
+    if (act === 'repos') menuRepos(ctx);
+    if (act === 'reduire') reduire(el, ctx);
     if (act === 'terminer') finir(ctx);
     if (act === 'annuler' && await confirmer('Les séries de cette séance ne seront pas enregistrées.', { titre: 'Annuler la séance ?', ok: 'Annuler la séance', danger: true })) {
       ctx.maj(s => ({ ...s, enCours: null }), { rendre: false });
@@ -54,9 +85,50 @@ export function render(el, ctx) {
   };
 }
 
+// Poignée : glisser l'en-tête vers le bas (ou toucher la poignée) réduit la séance ; elle continue, « Reprendre » la rouvre.
+function glisserPourReduire(el, ctx) {
+  const tete = el.querySelector('[data-tete]');
+  tete.addEventListener('touchmove', e => e.preventDefault(), { passive: false }); // sinon Safari fait défiler la page
+  tete.onpointerdown = e => {
+    if (e.target.closest('button:not(.poignee)')) return;
+    const y0 = e.clientY;
+    let dy = 0;
+    try { tete.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+    tete.onpointermove = m => { dy = Math.max(0, m.clientY - y0); el.style.transform = dy ? `translateY(${dy}px)` : ''; };
+    tete.onpointerup = tete.onpointercancel = () => {
+      tete.onpointermove = tete.onpointerup = tete.onpointercancel = null;
+      if (dy > 90) return reduire(el, ctx);
+      if (!dy) return;
+      el.classList.add('revient'); el.style.transform = '';
+      setTimeout(() => el.classList.remove('revient'), 260);
+    };
+  };
+}
+
+function reduire(el, ctx) {
+  if (el.classList.contains('reduit')) return;
+  el.style.animation = ''; // l'animation en ligne « none » (réaffichage) masquerait celle de la classe
+  el.classList.add('reduit');
+  const fin = () => { if (!el.classList.contains('reduit')) return; el.classList.remove('reduit'); el.style.transform = ''; ctx.aller('#/programmes'); };
+  el.addEventListener('animationend', fin, { once: true });
+  setTimeout(fin, 400); // si les animations sont coupées (réglage « réduire les animations »)
+}
+
 function carte(state, ex, e, ei) {
-  const c = conseil(ex, sessionsDe(state, ex.id));
+  const c = conseil(ex, sessionsDe(state, ex.id)), w = state.enCours, repos = ex.reposSec ?? 90;
+  const cols = e.afficherRir ? 6 : 5, reste = resteRepos(w);
   let n = 0;
+  // Trait de repos sous chaque série ; sous la série qui a lancé le repos, la barre de décompte.
+  const ligneRepos = si => {
+    const actif = w.repos && w.repos.ei === ei && w.repos.si === si;
+    const arrive = actif && w.repos.pause == null && Date.now() - (w.repos.fin - w.repos.duree * 1000) < 1000;
+    return `<tr class="ligne-repos ${actif ? 'actif' : ''}" ${actif ? 'data-repos-on' : ''}><td colspan="${cols}">
+      <div class="repos-trait"><span data-repos-txt="${ei}">${fmtChrono(repos)}</span>
+        <input type="time" class="repos-choix" data-repos-ex="${ei}" value="${valeurDuree(repos)}" aria-label="Repos de ${esc(e.nomExercice)} (minutes : secondes)"></div>
+      ${actif ? `<button class="repos-actif ${arrive ? 'arrive' : ''}" data-act="repos" aria-label="Repos en cours : ouvrir le minuteur">
+        <span class="repos-reste" data-repos-rail style="width:${Math.min(100, reste / w.repos.duree * 100)}%"></span>
+        <span class="repos-chiffre" data-repos-temps>${fmtChrono(reste)}</span></button>` : ''}</td></tr>`;
+  };
   return `<section class="card exo ${e.supersetGroupe ? 'superset' : ''}">
     <div class="card-tete" style="margin:0">
       <div style="min-width:0">${e.supersetGroupe ? `<div class="exo-groupe">Superset ${esc(e.supersetGroupe)}</div>` : ''}
@@ -70,14 +142,49 @@ function carte(state, ex, e, ei) {
       const num = s.echauffement ? 'É' : ++n;
       const champ = (nom, mode) => `<input data-champ="${nom}" data-ei="${ei}" data-si="${si}" inputmode="${mode}" enterkeyhint="done" autocomplete="off"
         value="${s[nom] == null ? '' : fmtKg(s[nom])}" placeholder="${nom === 'rir' ? '–' : ''}" aria-label="${nom === 'kg' ? 'Charge' : nom === 'reps' ? 'Répétitions' : 'RIR'} série ${si + 1}">`;
-      return `<tr class="${s.faite ? 'faite' : ''}">
+      return `<tr class="${s.faite ? 'faite' : ''} ${s.faite && vientDeCocher === `${ei}-${si}` ? 'vient' : ''}">
         <td class="n ${s.echauffement ? 'echauf' : ''}"><button data-act="serie" data-ei="${ei}" data-si="${si}" aria-label="Options de la série ${si + 1}">${num}</button></td>
         <td class="prec">${esc(precedent(state, ex.id, si) ?? '—')}</td>
         <td>${champ('kg', 'decimal')}</td><td>${champ('reps', 'numeric')}</td>${e.afficherRir ? `<td>${champ('rir', 'numeric')}</td>` : ''}
-        <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>`;
+        <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>
+        ${ligneRepos(si)}`;
     }).join('')}</tbody></table>
-    <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}">+ Série</button></div>
+    <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}"><span>+ Série (<span data-repos-txt="${ei}">${fmtChrono(repos)}</span>)</span></button></div>
   </section>`;
+}
+
+// Panneau du minuteur : réglages du repos en cours, ou lancement d'un repos à la main.
+function menuRepos(ctx) {
+  const w = ctx.state.enCours;
+  if (!w.repos) {
+    const f = ouvrirFeuille({ titre: 'Minuteur', corps: `<p class="faint" style="margin-top:0">Lance un repos sans cocher de série.</p>
+      <div class="repos-grille">${[60, 90, 120, 150, 180, 240].map(s => `<button class="btn btn-secondary" data-lancer="${s}">${fmtChrono(s)}</button>`).join('')}</div>` });
+    f.addEventListener('click', e => {
+      const s = e.target.closest('[data-lancer]')?.dataset.lancer;
+      if (!s) return;
+      ctx.maj(st => ({ ...st, enCours: lancerRepos(st.enCours, +s, new Date()) }));
+      fermerFeuille(f);
+    });
+    return;
+  }
+  const libPause = () => ctx.state.enCours?.repos?.pause != null ? 'Reprendre' : 'Pause';
+  const f = ouvrirFeuille({ titre: 'Repos', corps: `
+    <div class="repos-grand" data-repos-temps>${fmtChrono(resteRepos(w))}</div>
+    <div class="repos-grille">
+      <button class="btn btn-secondary" data-r="-15">−15 s</button><button class="btn btn-secondary" data-r="15">+15 s</button>
+      <button class="btn btn-secondary" data-r="pause"><span>${libPause()}</span></button><button class="btn btn-secondary" data-r="recommencer">Recommencer</button>
+    </div>`, pied: '<button class="btn btn-primary" data-r="passer">Passer le repos</button>' });
+  f.dataset.reposFeuille = '';
+  f.addEventListener('click', e => {
+    const a = e.target.closest('[data-r]')?.dataset.r;
+    if (!a) return;
+    const now = new Date();
+    const fn = { '-15': w => ajusterRepos(w, -15), 15: w => ajusterRepos(w, 15), recommencer: w => recommencerRepos(w, now), passer: passerRepos,
+      pause: w => w.repos?.pause != null ? reprendreRepos(w, now) : pauserRepos(w, now) }[a];
+    ctx.maj(st => ({ ...st, enCours: fn(st.enCours) }), { rendre: a === 'passer' });
+    if (a === 'passer') return fermerFeuille(f);
+    f.querySelector('[data-r="pause"] span').textContent = libPause();
+  });
 }
 
 function menuSerie(ctx, ei, si) {
@@ -139,7 +246,12 @@ function choisirExercice(ctx) {
 
 async function finir(ctx) {
   const w = ctx.state.enCours;
-  const nonFaites = w.entrees.some(e => e.series.some(s => !s.faite));
+  if (w.entrees.some(e => e.series.some(s => !s.faite))) {
+    const c = await choisir('Certaines séries ne sont pas cochées. Une série vide n’est jamais enregistrée.', { titre: 'Terminer la séance ?', choix: [
+      ['valider', 'Valider les séries remplies', 'btn-primary'], ['ignorer', 'Ignorer les séries non cochées', 'btn-danger'], ['annuler', 'Continuer la séance', 'btn-texte']] });
+    if (!c || c === 'annuler') return;
+    if (c === 'valider') ctx.maj(s => ({ ...s, enCours: cocherRestantes(s.enCours, s) }), { rendre: false });
+  }
   const r = terminer(ctx.state, new Date());
   if (!r.workout.entrees.length) {
     if (await confirmer('Aucune série n’est cochée : rien ne sera enregistré.', { titre: 'Abandonner la séance ?', ok: 'Abandonner', danger: true })) {
@@ -148,25 +260,39 @@ async function finir(ctx) {
     }
     return;
   }
-  if (nonFaites && !await confirmer('Les séries non cochées ne seront pas enregistrées.', { titre: 'Terminer la séance ?', ok: 'Terminer' })) return;
   ctx.maj(s => ({ ...s, enCours: null, workouts: [...s.workouts, r.workout] }), { rendre: false });
   if (r.programmeModifie && await confirmer('Tu as changé le nombre de séries ou l’ordre des exercices pendant la séance.', { titre: 'Mettre à jour le programme ?', ok: 'Mettre à jour' }))
     ctx.maj(s => ({ ...s, templates: s.templates.map(t => t.id === w.templateId ? { ...t, items: programmeDepuisSeance(w) } : t) }), { rendre: false });
   ctx.aller('#/programmes');
-  resume(r);
+  bravo(r, ctx.state.workouts.length);
 }
 
-function resume({ workout, records }) {
-  const series = workout.entrees.flatMap(e => e.series.filter(s => !s.echauffement));
-  const volume = series.reduce((t, s) => t + s.kg * s.reps, 0);
-  ouvrirFeuille({ titre: 'Séance terminée', corps: `
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-label">Durée</div><div class="kpi-value">${fmtDuree(Date.parse(workout.fin) - Date.parse(workout.debut))}</div></div>
-      <div class="kpi"><div class="kpi-label">Séries</div><div class="kpi-value">${series.length}</div></div>
-      <div class="kpi"><div class="kpi-label">Volume</div><div class="kpi-value">${fmtNum(volume, 0)} <small>kg</small></div></div>
-      <div class="kpi"><div class="kpi-label">Records</div><div class="kpi-value">${records.length}</div></div>
-    </div>
-    ${records.length ? `<div class="label">Records battus</div><ul class="liste">${records.map(r =>
-      `<li class="liste-ligne" style="cursor:default"><span>${esc(r.nom)}</span><span class="badge pos">${r.type === 'kg' ? 'Charge max' : '1RM estimé'}</span></li>`).join('')}</ul>` : ''}`,
-    pied: '<button class="btn btn-primary" data-fermer>Fermer</button>' });
+// Écran de fin : étoiles, confettis et résumé (meilleure série de chaque exercice).
+function bravo({ workout, records }, n) {
+  const travail = e => e.series.filter(s => !s.echauffement);
+  const volume = workout.entrees.flatMap(travail).reduce((t, s) => t + s.kg * s.reps, 0);
+  const meilleure = e => travail(e).reduce((m, s) => (e1rm(s.kg, s.reps) ?? s.kg) > (e1rm(m.kg, m.reps) ?? m.kg) ? s : m, travail(e)[0] ?? e.series[0]);
+  const o = document.createElement('div');
+  o.className = 'bravo'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'Séance terminée');
+  o.innerHTML = `<div class="confettis" aria-hidden="true">${Array.from({ length: 40 }, (_, i) =>
+      `<i style="--x:${(Math.random() * 100).toFixed(1)}%;--d:${(Math.random() * 1.2).toFixed(2)}s;--t:${(2.4 + Math.random() * 1.8).toFixed(2)}s;--r:${Math.round(360 + Math.random() * 540)}deg;--c:var(--dv-${1 + i % 5})"></i>`).join('')}</div>
+    <button class="fermer" data-fermer aria-label="Fermer">${icon('close')}</button>
+    <div class="etoiles" aria-hidden="true"><span>★</span><span>★</span><span>★</span></div>
+    <h2>Bravo !</h2><p class="muted">C’est ta ${n === 1 ? '1re' : `${n}e`} séance.</p>
+    <section class="card bravo-carte">
+      <h3 class="card-title">${esc(workout.nom)}</h3><div class="faint">${esc(fmtDateLongue(workout.debut))}</div>
+      <div class="bravo-kpis"><span>${icon('chrono')}${fmtDuree(Date.parse(workout.fin) - Date.parse(workout.debut))}</span>
+        <span>${icon('haltere')}${fmtNum(volume, 0)} kg</span><span>${icon('graphique')}${records.length} record${records.length > 1 ? 's' : ''}</span></div>
+      <table class="bravo-table"><thead><tr><th>Exercice</th><th>Meilleure série</th></tr></thead><tbody>
+        ${workout.entrees.map(e => { const m = meilleure(e); return `<tr><td>${travail(e).length || e.series.length} × ${esc(e.nomExercice)}</td>
+          <td>${fmtKg(m.kg)} kg × ${m.reps}${records.some(r => r.nom === e.nomExercice) ? ' <span class="badge pos">Record</span>' : ''}</td></tr>`; }).join('')}
+      </tbody></table>
+    </section>
+    <button class="btn btn-primary btn-bloc bravo-ok" data-fermer>Continuer</button>`;
+  const fermer = () => { o.classList.add('sort'); setTimeout(() => o.remove(), 200); document.removeEventListener('keydown', clavier); };
+  const clavier = e => { if (e.key === 'Escape') fermer(); };
+  o.onclick = e => { if (e.target.closest('[data-fermer]')) fermer(); };
+  document.addEventListener('keydown', clavier);
+  document.body.appendChild(o);
+  o.querySelector('.bravo-ok').focus();
 }
