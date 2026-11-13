@@ -5,7 +5,7 @@ import { supprimerExercice } from '../store.js';
 import { lireNombre } from '../seance.js';
 import { SOURCES } from '../seed.js';
 import { courbe, barres } from '../graph.js';
-import { esc, icon, fmtKg, fmtNum, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur, choixDuree } from '../ui.js';
+import { esc, icon, fmtKg, fmtNum, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur, champDuree, lireDuree, valeurDuree } from '../ui.js';
 
 export const liensSources = ids => ids.length ? `<div class="sources">Sources : ${ids.map(s =>
   `<a href="${esc(SOURCES[s].url)}" target="_blank" rel="noopener" title="${esc(SOURCES[s].titre)}">${s}</a>`).join(', ')}</div>` : '';
@@ -75,7 +75,7 @@ function formulaire(ex, court = false) {
       <div class="form-group"><label for="f-rir">RIR cible</label><input id="f-rir" class="form-control" value="${esc(ex.rirCible)}" maxlength="5"></div>
       <div class="form-group"><label for="f-pas">Pas du matériel (kg)</label><input id="f-pas" class="form-control" inputmode="decimal" value="${fmtKg(ex.pasMateriel)}"></div>
     </div>
-    <div class="form-group"><label for="f-repos">Repos entre les séries</label>${choixDuree('f-repos', ex.reposSec)}</div>
+    <div class="form-group"><label for="f-repos">Repos entre les séries <span class="faint">(min : s)</span></label>${champDuree('f-repos', ex.reposSec)}</div>
     <div class="form-group"><label for="f-inc">Incrément forcé (kg) <span class="faint">facultatif, sinon calculé</span></label>
       <input id="f-inc" class="form-control" inputmode="decimal" value="${fmtKg(ex.increment)}" placeholder="Automatique"></div>
     <label class="case"><input type="checkbox" id="f-main" ${ex.parMain ? 'checked' : ''}> Charge par main (haltères)</label>`}`;
@@ -89,7 +89,7 @@ function brancherSeg(racine) {
     const d = defautsProfil(b.dataset.type);
     const set = (id, v) => { const i = racine.querySelector(id); if (i) i.value = v; };
     set('#f-min', d.repMin); set('#f-max', d.repMax); set('#f-rir', d.rirCible);
-    set('#f-repos', d.reposSec);
+    set('#f-repos', valeurDuree(d.reposSec));
   };
 }
 
@@ -102,7 +102,7 @@ function lire(r) {
   };
   if (r.querySelector('#f-min')) Object.assign(v, {
     repMin: lireNombre(val('#f-min')), repMax: lireNombre(val('#f-max')), series: lireNombre(val('#f-series')),
-    reposSec: Number(val('#f-repos')), rirCible: val('#f-rir').trim(), pasMateriel: lireNombre(val('#f-pas')),
+    reposSec: lireDuree(r.querySelector('#f-repos')), rirCible: val('#f-rir').trim(), pasMateriel: lireNombre(val('#f-pas')),
     increment: lireNombre(val('#f-inc')), parMain: r.querySelector('#f-main').checked,
   });
   return v;
@@ -162,6 +162,7 @@ function fiche(el, ctx, ex) {
       if (!v.nom) return champErreur(form.querySelector('#f-nom'), 'Donne un nom à l’exercice.');
       if (!(v.repMin > 0 && v.repMax >= v.repMin)) return champErreur(form.querySelector('#f-max'), 'Reps max doit être supérieur ou égal à reps min.');
       if (!(v.series >= 1)) return champErreur(form.querySelector('#f-series'), 'Au moins une série.');
+      if (v.reposSec == null) return champErreur(form.querySelector('#f-repos'), 'Indique un temps de repos.');
       if (!(v.pasMateriel > 0)) return champErreur(form.querySelector('#f-pas'), 'Le pas du matériel doit être supérieur à 0.');
       ctx.maj(s => ({ ...s, exercises: s.exercises.map(x => x.id === ex.id ? { ...x, ...v } : x) }));
       toast('Exercice enregistré.');

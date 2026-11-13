@@ -101,10 +101,12 @@ export function fermerFeuille(f) {
 export const tic = () => { try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } };
 export const TIC = '<input type="checkbox" switch class="tic" tabindex="-1" aria-hidden="true">';
 
-// Choix d'une durée de repos : liste native, qui ouvre la vraie roulette d'iOS (tic haptique compris).
-const fmtRepos = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
-export const choixDuree = (id, sec) => `<select id="${id}" class="form-control">${[...new Set([...Array(41).keys()].map(i => i * 15).concat(sec))]
-  .sort((a, b) => a - b).map(v => `<option value="${v}" ${v === sec ? 'selected' : ''}>${fmtRepos(v)}</option>`).join('')}</select>`;
+// Durée de repos : champ « heure » détourné (mm:ss affiché comme hh:mm), seul moyen d'ouvrir la vraie roulette iOS à deux colonnes.
+// shortcut: limité à 23 min 59 s, et un iPhone réglé en 12 h afficherait AM/PM ; repasser à une roulette maison si ça gêne.
+const p2 = n => String(n).padStart(2, '0');
+export const valeurDuree = sec => `${p2(Math.min(23, Math.floor(sec / 60)))}:${p2(sec >= 1440 ? 59 : sec % 60)}`;
+export const champDuree = (id, sec) => `<input id="${id}" type="time" class="form-control" value="${valeurDuree(sec)}">`;
+export const lireDuree = input => { const [m, s] = (input?.value || '').split(':').map(Number); return Number.isFinite(m) && Number.isFinite(s) ? m * 60 + s : null; };
 
 export function champErreur(input, message) {
   input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');
