@@ -43,8 +43,10 @@ export function render(el, ctx) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const { act, id } = b.dataset;
-    if (act === 'reprendre') return ctx.aller('#/seance');
-    if (act === 'debuter' || act === 'vide') return debuter(ctx, act === 'vide' ? null : id);
+    if (act === 'reprendre') return ctx.ouvrirSeance();
+    if (act === 'vide') return debuter(ctx, null);
+    // « Débuter » passe par l'aperçu du programme, comme toucher la carte.
+    if (act === 'debuter') return apercu(ctx, state.templates.find(t => t.id === id), E);
     if (act === 'apercu') return apercu(ctx, state.templates.find(t => t.id === id), E);
     if (act === 'editer') return editer(ctx, state.templates.find(t => t.id === id));
     if (act === 'nouveau') return editer(ctx, { id: 't' + Date.now(), nom: '', items: [] }, true);
@@ -55,16 +57,17 @@ async function debuter(ctx, id) {
   const { state } = ctx;
   if (state.enCours && !await confirmer(`« ${state.enCours.nom} » est déjà en cours. La remplacer par une nouvelle séance ? Ce qui n’a pas été terminé sera perdu.`, { titre: 'Remplacer la séance en cours ?', ok: 'Remplacer', danger: true })) return;
   ctx.maj(s => ({ ...s, enCours: demarrer(s, id, new Date()) }), { rendre: false });
-  ctx.aller('#/seance');
+  ctx.ouvrirSeance();
 }
 
-// Toucher la carte d'un programme : ses exercices (« 3 × Développé… ») et le bouton Débuter.
+// Toucher la carte d'un programme ou « Débuter » : carte qui surgit au centre avec ses exercices (« 3 × Développé… »).
 function apercu(ctx, t, E) {
   const d = derniere(ctx.state, t.id);
   const f = ouvrirFeuille({ titre: t.nom, corps: `<p class="faint" style="margin:0 0 8px">${d ? `Dernière fois : ${fmtDate(d)}` : 'Jamais fait'}</p>
     <ul class="liste">${t.items.map(i => `<li class="liste-ligne" style="cursor:default"><span><b>${i.series} × ${esc(E[i.exerciseId]?.nom ?? '?')}</b>
       <span class="faint" style="display:block">${esc(NOM_MUSCLE[E[i.exerciseId]?.musclePrincipal] ?? '')}${i.supersetGroupe ? ` · superset ${esc(i.supersetGroupe)}` : ''}</span></span></li>`).join('')}</ul>`,
-    pied: '<button class="btn btn-texte" data-p="editer">Modifier</button><button class="btn btn-primary" data-p="debuter">Débuter</button>' });
+    pied: '<button class="btn btn-texte" data-p="editer">Modifier</button><button class="btn btn-primary" data-p="debuter">Débuter la séance</button>' });
+  f.classList.add('carte-pop');
   f.addEventListener('click', e => {
     const p = e.target.closest('[data-p]')?.dataset.p;
     if (!p) return;

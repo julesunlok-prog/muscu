@@ -183,7 +183,17 @@ button:disabled > .tic { display: none; }
 .repos-pilule [data-repos-temps]:empty { display: none; }
 
 /* Séance : monte du bas à l'ouverture, redescend quand on la réduit, revient en place si le glisser est trop court. */
-#vue[data-vue="seance"]:not([data-meme]) { animation: monte .38s var(--out); }
+#vue[data-vue="seance"]:not([data-meme]) { animation: fade .2s ease; }
+/* Tiroir qui monte par-dessus la page quand on ouvre la séance (la séance s'affiche dessous, puis il s'efface). */
+.tiroir-seance { position: fixed; inset: 0; z-index: 1400; background: var(--surface); border-radius: var(--r-xl) var(--r-xl) 0 0; box-shadow: var(--pop);
+  padding-top: calc(8px + env(safe-area-inset-top, 0px)); animation: monte .36s var(--out); }
+.tiroir-seance span { display: block; width: 40px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--control); }
+.tiroir-seance.sort { animation: fade .22s ease reverse forwards; }
+/* Aperçu du programme : carte qui surgit au centre (au lieu de monter du bas). */
+.feuille.carte-pop { top: 50%; bottom: auto; left: 16px; right: 16px; max-height: 82vh; border-radius: var(--r-xl); transform: translateY(-50%); animation: pop .28s var(--out); }
+.feuille.carte-pop.sort { animation: pop .16s var(--in) reverse forwards; }
+.feuille.carte-pop .feuille-pied { padding-bottom: 14px; }
+@keyframes pop { from { opacity: 0; transform: translateY(-50%) scale(.9); } to { opacity: 1; transform: translateY(-50%); } }
 #vue.reduit { animation: descend .28s var(--in) forwards; }
 #vue.revient { transition: transform .25s var(--out); }
 #vue[data-meme] .card { animation: none; }
@@ -269,7 +279,7 @@ button:disabled > .tic { display: none; }
 .minuteur { position: fixed; left: 8px; right: 8px; bottom: calc(var(--onglets-h) + var(--bas) + 8px); z-index: 30; max-width: 624px; margin: 0 auto;
   background: var(--float); color: var(--float-ink); border-radius: var(--pilule); box-shadow: var(--pop); padding: 6px 6px 6px 22px;
   display: flex; align-items: center; gap: 6px; animation: rise .22s var(--out); overflow: hidden; }
-.minuteur .temps { font-size: 26px; font-weight: 600; flex: 1; letter-spacing: -.03em; }
+.minuteur .temps { font-size: 26px; font-weight: 600; flex: 1; letter-spacing: -.03em; cursor: pointer; }
 .minuteur .temps small { font-size: 13px; font-weight: 500; letter-spacing: 0; opacity: .65; margin-left: 6px; }
 .minuteur button { height: 44px; min-width: 48px; padding: 0 12px; border-radius: var(--pilule); border: 0; background: rgba(255, 255, 255, .12); color: inherit; font-weight: 600; font-size: 14px; cursor: pointer; transition: background var(--tr), transform .16s var(--out); }
 .minuteur button:active { transform: scale(.94); background: rgba(255, 255, 255, .2); }

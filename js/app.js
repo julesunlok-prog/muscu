@@ -48,6 +48,19 @@ export const ctx = {
   lancerDemo() { reel = state; state = { ...genererDemo(), settings: { ...state.settings } }; ctx.aller('#/programmes'); toast('Mode démo : 12 semaines de séances fictives.', 'info'); },
   quitterDemo() { state = reel; reel = null; ctx.aller('#/programmes'); majMinuteur(); toast('Démo quittée : tes données sont revenues.'); },
   aller(hash) { if (location.hash === hash) afficher(); else location.hash = hash; },
+  // Ouvre la séance comme un tiroir qui monte par-dessus la page, puis l'affiche dessous et le tiroir s'efface.
+  ouvrirSeance() {
+    if (document.querySelector('.tiroir-seance')) return;
+    const t = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'tiroir-seance', innerHTML: '<span></span>' }));
+    const fin = () => {
+      if (!t.isConnected || t.classList.contains('sort')) return;
+      ctx.aller('#/seance');
+      t.classList.add('sort');
+      setTimeout(() => t.remove(), 250);
+    };
+    t.addEventListener('animationend', fin, { once: true });
+    setTimeout(fin, 600); // si les animations sont coupées
+  },
   rendre: () => afficher(),
 };
 
@@ -158,7 +171,7 @@ function majMinuteur() {
 }
 barre.addEventListener('click', e => {
   const a = e.target.closest('[data-repos]')?.dataset.repos;
-  if (!a) return;
+  if (!a) return ctx.ouvrirSeance(); // toucher le temps rouvre la séance
   ctx.maj(w => ({ ...w, enCours: a === 'passer' ? passerRepos(w.enCours) : ajusterRepos(w.enCours, Number(a)) }), { rendre: false });
   if (a === 'passer') afficher();
 });
@@ -168,7 +181,7 @@ document.addEventListener('visibilitychange', majMinuteur);
 // ---------- Coquille ----------
 document.getElementById('onglets').innerHTML = ONGLETS.map(([nom, ic, libelle]) =>
   `<a href="#/${nom}" data-nom="${nom}">${icon(ic)}<span>${esc(libelle)}</span></a>`).join('');
-document.getElementById('reprise').querySelector('button').onclick = () => ctx.aller('#/seance');
+document.getElementById('reprise').querySelector('button').onclick = () => ctx.ouvrirSeance();
 window.addEventListener('hashchange', afficher);
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false }); // filet de sécurité anti-zoom iOS
 document.addEventListener('click', e => {
