@@ -19,7 +19,7 @@ export const explicationPrediction = () => `<details class="explication"><summar
     <li>Une baisse n’est jamais prolongée : elle s’affiche comme une stagnation (0 kg/sem.).</li>
     <li>La <b>vérification</b> refait le calcul comme il y a 4 semaines et le compare à ta dernière séance : c’est ce qui te dit si tu peux te fier aux prédictions.</li>
   </ul>
-  <p>Limite : la progression ralentit avec l’expérience. Un débutant gagne souvent 15 à 30 % sur son 1RM en 12 semaines, un pratiquant entraîné plutôt 2 à 6 % par an (chiffres de coachs, pas d’une méta-analyse). Au-delà de 4 semaines, prends la prédiction comme un ordre de grandeur.</p>
+  <p>Limite : la progression ralentit avec l’expérience, et une stagnation se juge sur 3 à 4 semaines, pas sur une séance (avis de coachs). Au-delà de 4 semaines, prends la prédiction comme un ordre de grandeur.</p>
   ${liensSources(['S20'])}</details>`;
 
 export function render(el, ctx, params) {
@@ -128,8 +128,8 @@ function fiche(el, ctx, ex) {
     <div class="page-header" style="margin-bottom:12px"><h1 class="page-title" style="font-size:24px;font-weight:400">${esc(ex.nom)}</h1></div>
     <div class="conseil ${c.action === 'augmenter' ? 'pos' : ''}"><b>Prochaine séance :</b> ${esc(c.texte)}${liensSources(c.sources)}</div>
     ${st ? `<div class="alert alert-warn"><b>Stagnation</b> : pas de progrès depuis ${st.depuis} séances (dernier progrès le ${fmtDate(st.dateRecord)}).
-      Fais une séance à <b>${fmtKg(st.kgDecharge)} kg</b> (−5 à 10 %) puis remonte en double progression. Si ça revient, change de fourchette de reps ou de variante.
-      Une semaine complète sans entraînement n’apporte rien pour le muscle.${liensSources(['S9'])}</div>` : ''}
+      Recule à <b>${fmtKg(st.kgDecharge)} kg</b> (−5 à 10 %, repère de coachs) puis remonte en double progression. Si ça revient, change de fourchette de reps ou de variante.
+      Une semaine complète sans entraînement ne fait pas perdre de muscle, mais n’en fait pas gagner non plus.${liensSources(['S23', 'S9'])}</div>` : ''}
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-label">1RM estimé</div><div class="kpi-value">${fmtNum(derE1)} <small>kg</small></div></div>
       <div class="kpi"><div class="kpi-label">Record 1RM estimé</div><div class="kpi-value">${fmtNum(record)} <small>kg</small></div></div>

@@ -30,8 +30,9 @@ export function conseil(ex, sessions) {
       texte: `Première fois : choisis une charge pour ${lo}–${hi} reps en gardant ${ex.rirCible} rep(s) en réserve` };
   const st = stagnation(ex, sessions);
   if (st)
-    return { action: 'decharger', kg: st.kgDecharge, reps: hi, sources: ['S9', 'S3'],
-      texte: `Stagnation depuis ${st.depuis} séances : décharge à ${fmt(st.kgDecharge)} kg, vise ${hi} reps, puis remonte en double progression` };
+    // Recul de charge (≈ −7,5 %) : repère de coachs, aucune étude ne le teste directement (S23).
+    return { action: 'decharger', kg: st.kgDecharge, reps: hi, sources: ['S23'],
+      texte: `Stagnation depuis ${st.depuis} séances : recule à ${fmt(st.kgDecharge)} kg, vise ${hi} reps, puis remonte en double progression` };
   const last = sessions[sessions.length - 1];
   const top = Math.max(...last.series.map(s => s.kg));
   const reps = last.series.filter(s => s.kg === top).map(s => s.reps);
@@ -40,13 +41,13 @@ export function conseil(ex, sessions) {
   const saut = inc / top > SAUT_MAX;
   const plafond = saut ? hi + 3 : hi;
   if (faible >= plafond)
-    return { action: 'augmenter', kg: top + inc, reps: lo, sources: saut ? ['S1', 'S3'] : ['S1', 'S2'],
+    return { action: 'augmenter', kg: top + inc, reps: lo, sources: saut ? ['S27', 'S3'] : ['S27', 'S2'],
       texte: `+${fmt(inc)} kg → ${fmt(top + inc)} kg, vise ${lo} reps` };
   const cible = Math.min(plafond, faible + 1);
   if (saut && faible >= hi)
     return { action: 'etendre', kg: top, reps: cible, sources: ['S3'],
       texte: `Garde ${fmt(top)} kg, vise ${cible} reps : ${top > 0 ? `le prochain palier (+${fmt(inc)} kg) fait +${Math.round(inc / top * 100)} %` : 'avant d’ajouter du lest'}, monte d’abord en reps` };
-  return { action: 'maintenir', kg: top, reps: cible, sources: ['S1', 'S3'],
+  return { action: 'maintenir', kg: top, reps: cible, sources: ['S27', 'S3'],
     texte: `Garde ${fmt(top)} kg, vise ${cible} reps sur chaque série (objectif ${plafond})` };
 }
 

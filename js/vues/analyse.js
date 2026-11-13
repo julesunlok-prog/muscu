@@ -63,7 +63,7 @@ function bilan(state, now) {
     </div>
     <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6">
       ${b.retard ? `<li>Muscle le plus en retard : <b>${esc(NOM_MUSCLE[b.retard.muscle])}</b>, ${fmtNum(b.retard.ratio * cibles[b.retard.muscle])} séries par semaine pour une cible de ${cibles[b.retard.muscle]}. Ajoute-lui des séries.</li>` : ''}
-      ${b.stagnations.length ? `<li>Stagnation sur ${b.stagnations.map(esc).join(', ')} : suis le conseil de décharge de chaque exercice.</li>` : '<li>Aucune stagnation.</li>'}
+      ${b.stagnations.length ? `<li>Stagnation sur ${b.stagnations.map(esc).join(', ')} : suis le conseil de recul de charge de chaque exercice.</li>` : '<li>Aucune stagnation.</li>'}
       <li>${fmtNum(b.volume, 0)} kg soulevés sur les 30 derniers jours.</li>
     </ul>`, '<span class="faint">30 derniers jours</span>');
 }
@@ -134,7 +134,7 @@ function predictions(state) {
 function stagnations(state) {
   const stag = state.exercises.filter(e => !e.archive).map(e => ({ e, st: stagnation(e, sessionsDe(state, e.id)) })).filter(x => x.st);
   return carte('Stagnations', stag.length ? `<ul class="liste">${stag.map(({ e, st }) => `<li><a class="liste-ligne" href="#/exercices/${encodeURIComponent(e.id)}">
-    <div><b>${esc(e.nom)}</b><div class="faint">Depuis ${st.depuis} séances · décharge à ${fmtKg(st.kgDecharge)} kg</div></div>${icon('chevron', 'icone chevron')}</a></li>`).join('')}</ul>`
+    <div><b>${esc(e.nom)}</b><div class="faint">Depuis ${st.depuis} séances · recul à ${fmtKg(st.kgDecharge)} kg</div></div>${icon('chevron', 'icone chevron')}</a></li>`).join('')}</ul>`
     : vide('Aucune stagnation : tout progresse.'));
 }
 
@@ -162,7 +162,7 @@ function frequence(state, now, ordre) {
   return carte('Fréquence par muscle', `${lignes.length ? `<ul class="liste">${lignes.map(m => `<li class="liste-ligne" style="cursor:default">
       <span>${esc(NOM_MUSCLE[m])}</span><span>${f[m].prevu < 2 ? '<span class="badge warn">1×/sem.</span> ' : ''}<span class="faint">prévu ${f[m].prevu}×, fait ${fmtNum(f[m].reel)}×/sem.</span></span></li>`).join('')}</ul>` : vide('Aucun programme.')}
     <p class="faint" style="margin:8px 0 0">Travailler chaque muscle au moins 2 fois par semaine est recommandé. À volume égal, la fréquence change peu la prise de muscle, mais aide la force : tes séances Upper / Lower permettront de passer à 2×.</p>
-    ${liensSources(['S18', 'S5'])}`, '<span class="faint">4 semaines</span>');
+    ${liensSources(['S18', 'S22', 'S5'])}`, '<span class="faint">4 semaines</span>');
 }
 
 function balance(state, now) {
@@ -192,6 +192,6 @@ function zones(state, now) {
 function rir(state, now) {
   const r = repartitionRir(state, now);
   return carte('Proximité de l’échec (RIR)', r.total ? `${empile([0, 1, 2, 3, 4].map((k, i) => ({ nom: k === 4 ? '4+ RIR' : `${k} RIR`, n: r.parRir[k], c: `--dv-${i + 1}` })))}
-    <p class="faint" style="margin:8px 0 0">${r.total} séries avec RIR, ${r.sansRir} sans. La prise de muscle augmente quand on finit plus près de l’échec (0 à 2 reps en réserve) ; la force y est peu sensible.</p>${liensSources(['S6'])}`
+    <p class="faint" style="margin:8px 0 0">${r.total} séries avec RIR, ${r.sansRir} sans. Plus on finit près de l’échec, plus le muscle grossit ; aller jusqu’à l’échec n’apporte presque rien de plus. La force y est peu sensible.</p>${liensSources(['S6', 'S24'])}`
     : vide('Pour activer cette section, affiche la colonne RIR en séance (menu ⋯ d’un exercice) et note combien de reps tu aurais encore pu faire.'), '<span class="faint">4 semaines</span>');
 }

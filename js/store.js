@@ -16,13 +16,18 @@ export function etatInitial() {
 
 const valide = s => s && s.version === 1 && ['exercises', 'templates', 'workouts'].every(k => Array.isArray(s[k])) && s.settings;
 
+// Notes et sources des exercices de départ : toujours celles du code (elles ne se modifient pas dans l'app),
+// pour que les corrections de sources arrivent aussi dans les données déjà enregistrées.
+const SEED = Object.fromEntries(EXERCICES_INITIAUX.map(e => [e.id, e]));
+const notesAJour = s => ({ ...s, exercises: s.exercises.map(e => SEED[e.id] ? { ...e, note: SEED[e.id].note, sources: SEED[e.id].sources } : e) });
+
 export function chargerEtat(storage = globalThis.localStorage) {
   let brut = null;
   try { brut = storage.getItem(CLE); } catch { /* stockage indisponible : on repart de l'état initial */ }
   if (!brut) return etatInitial();
   const s = JSON.parse(brut);
   if (!valide(s)) throw new Error('Données locales illisibles.');
-  return s;
+  return notesAJour(s);
 }
 
 export function sauver(state, storage = globalThis.localStorage) {
@@ -36,7 +41,7 @@ export function importerJSON(text) {
   let s;
   try { s = JSON.parse(text); } catch { s = null; }
   if (!valide(s)) throw new Error('Fichier de sauvegarde invalide.');
-  return s;
+  return notesAJour(s);
 }
 
 // Un exercice déjà utilisé (historique, programme ou séance en cours) est archivé, pas effacé.
