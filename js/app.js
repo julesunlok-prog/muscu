@@ -119,8 +119,8 @@ function bip(notes) {
   if (!audio || document.visibilityState !== 'visible') return;
   notes.forEach(([t, f]) => {
     const o = audio.createOscillator(), g = audio.createGain();
-    o.frequency.value = f; g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.18);
-    o.connect(g).connect(audio.destination); o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
+    o.frequency.value = f; g.gain.setValueAtTime(0.9, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.22);
+    o.connect(g).connect(audio.destination); o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.25);
   });
 }
 const SON_DEBUT = [[0, 660], [0.12, 990]], SON_FIN = [[0, 880], [0.25, 880], [0.5, 1320]];
