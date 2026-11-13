@@ -146,8 +146,8 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .form-control { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--control); border-radius: var(--r-md); background: var(--surface);
   font-size: 16px; transition: border-color .15s, box-shadow .15s; }
 /* Champ heure sur iPhone : sans ça il garde sa largeur native et déborde de la carte. */
-input[type="time"].form-control { -webkit-appearance: none; appearance: none; min-width: 0; display: block; text-align: left; }
-input[type="time"].form-control::-webkit-date-and-time-value { text-align: left; }
+input[type="time"].form-control { -webkit-appearance: none; appearance: none; min-width: 0; display: block; text-align: left; line-height: 46px; padding-top: 0; padding-bottom: 0; }
+input[type="time"].form-control::-webkit-date-and-time-value { text-align: left; margin: 0; line-height: 46px; } /* iOS colle sinon la valeur en haut */
 .form-control:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea.form-control { height: auto; min-height: 80px; padding: 8px 11px; resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
