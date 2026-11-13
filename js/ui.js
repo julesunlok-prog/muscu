@@ -111,6 +111,14 @@ export function ticPartout() {
   poser();
   new MutationObserver(poser).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('change', e => { if (e.target.classList?.contains('tic')) try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } });
+  // L'interrupteur bascule aussi quand on glisse le doigt dessus, et ce basculement clique le bouton (« + Série » en défilant).
+  // Un toucher qui a bougé de plus de 10 px, ou que le défilement a interrompu, n'est donc pas un clic.
+  let depart = null, bouge = false, sansClicJusqua = 0;
+  document.addEventListener('pointerdown', e => { depart = [e.clientX, e.clientY]; bouge = false; }, true);
+  document.addEventListener('pointermove', e => { if (depart && Math.hypot(e.clientX - depart[0], e.clientY - depart[1]) > 10) bouge = true; }, true);
+  document.addEventListener('pointercancel', () => { depart = null; sansClicJusqua = Date.now() + 400; }, true);
+  document.addEventListener('pointerup', () => { if (bouge) sansClicJusqua = Date.now() + 400; depart = null; bouge = false; }, true);
+  document.addEventListener('click', e => { if (Date.now() < sansClicJusqua) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 
 // Durée de repos : champ « heure » détourné (mm:ss affiché comme hh:mm), seul moyen d'ouvrir la vraie roulette iOS à deux colonnes.
