@@ -1,7 +1,7 @@
 // Séance en cours (spec §4.2) : l'écran le plus important. Une série conforme au conseil = un seul toucher (✓).
 // Repos affiché entre les séries (trait « 2:30 » qu'on touche pour changer le temps, barre qui se vide après avoir coché),
 // minuteur dans l'en-tête, poignée pour réduire la séance, écran « Bravo » à la fin.
-import { cocher, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
+import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
   pauserRepos, reprendreRepos, recommencerRepos, lancerRepos } from '../seance.js';
 import { conseil, sessionsDe, e1rm } from '../moteur.js';
@@ -15,6 +15,12 @@ export function render(el, ctx) {
   const { state } = ctx, w = state.enCours;
   const E = Object.fromEntries(state.exercises.map(e => [e.id, e]));
   const reste = resteRepos(w);
+  // Les exercices d'un même superset qui se suivent forment un seul bloc.
+  const blocs = [];
+  w.entrees.forEach((e, ei) => {
+    const der = blocs.at(-1);
+    if (e.supersetGroupe && der && w.entrees[der.at(-1)].supersetGroupe === e.supersetGroupe) der.push(ei); else blocs.push([ei]);
+  });
   el.style.transform = '';
   el.innerHTML = `
     <header class="seance-tete" data-tete>
@@ -28,7 +34,7 @@ export function render(el, ctx) {
     </header>
     <h1 class="seance-titre">${esc(w.nom)}</h1>
     <div class="faint seance-date">${esc(fmtDateLongue(w.debut))}</div>
-    ${w.entrees.map((e, ei) => carte(state, E[e.exerciseId], e, ei)).join('')}
+    ${blocs.map(b => b.length > 1 ? carteSuperset(state, E, b) : carte(state, E[w.entrees[b[0]].exerciseId], w.entrees[b[0]], b[0])).join('')}
     <button class="ajouter" data-act="ajouter-ex" style="margin-bottom:12px">+ Exercice</button>
     <button class="btn btn-danger btn-bloc" data-act="annuler">Annuler la séance</button>`;
   vientDeCocher = null;
@@ -52,8 +58,8 @@ export function render(el, ctx) {
     const t = e.target.closest('input[data-repos-ex]');
     const r = t && lireDuree(t);
     if (r == null) return;
-    const id = ctx.state.enCours.entrees[+t.dataset.reposEx].exerciseId;
-    ctx.maj(s => ({ ...s, exercises: s.exercises.map(x => x.id === id ? { ...x, reposSec: r } : x) }), { rendre: false });
+    const ids = t.dataset.reposEx.split(',').map(i => ctx.state.enCours.entrees[+i].exerciseId); // superset : tous ses exercices
+    ctx.maj(s => ({ ...s, exercises: s.exercises.map(x => ids.includes(x.id) ? { ...x, reposSec: r } : x) }), { rendre: false });
     el.querySelectorAll(`[data-repos-txt="${t.dataset.reposEx}"]`).forEach(x => { x.textContent = fmtChrono(r); });
     el.querySelectorAll(`input[data-repos-ex="${t.dataset.reposEx}"]`).forEach(x => { if (x !== t) x.value = valeurDuree(r); });
   };
@@ -62,7 +68,16 @@ export function render(el, ctx) {
     const b = e.target.closest('[data-act]');
     if (!b || Date.now() < sansClicJusqua) return; // pas de clic à la fin d'un glisser
     const ei = +b.dataset.ei, si = +b.dataset.si, act = b.dataset.act;
+    const eis = b.dataset.tour?.split(',').map(Number) ?? [ei]; // superset : les exercices du tour
     const majSeance = fn => ctx.maj(s => ({ ...s, enCours: fn(s.enCours, s) }));
+    if (act === 'coche-tour') {
+      const avant = ctx.state.enCours, apres = cocherTour(avant, eis, si, ctx.state, new Date());
+      if (apres === avant) {
+        toast('Indique la charge et les reps avant de cocher.', 'info');
+        [...b.closest('tr').querySelectorAll('input[data-champ="kg"], input[data-champ="reps"]')].find(i => !lireNombre(i.value))?.focus();
+      } else { vientDeCocher = `${ei}-${si}`; majSeance(() => apres); }
+    }
+    if (act === 'tour-plus') majSeance(w => eis.reduce((x, i) => ajouterSerie(x, i), w));
     if (act === 'coche') {
       const avant = ctx.state.enCours.entrees[ei].series[si];
       vientDeCocher = `${ei}-${si}`;
@@ -73,7 +88,7 @@ export function render(el, ctx) {
       }
     }
     if (act === 'serie-plus') majSeance(w => ajouterSerie(w, ei));
-    if (act === 'serie') menuSerie(ctx, ei, si);
+    if (act === 'serie') menuSerie(ctx, eis, si);
     if (act === 'menu-ex') menuExercice(ctx, ei);
     if (act === 'ajouter-ex') choisirExercice(ctx);
     if (act === 'repos') menuRepos(ctx);
@@ -118,8 +133,8 @@ function glisserPourSupprimer(el, ctx) {
     const largeur = g.tr.offsetWidth;
     if (e.type === 'pointerup' && g.dx < -largeur * 0.4) {
       cellules(g.tr, -largeur, true);
-      const { ei, si } = g.tr.dataset;
-      return setTimeout(() => ctx.maj(s => ({ ...s, enCours: supprimerSerie(s.enCours, +ei, +si) })), 200);
+      const { ei, si, tour } = g.tr.dataset, eis = tour ? tour.split(',').map(Number) : [+ei]; // un tour de superset part en entier
+      return setTimeout(() => ctx.maj(s => ({ ...s, enCours: eis.reduce((w, i) => supprimerSerie(w, i, +si), s.enCours) })), 200);
     }
     cellules(g.tr, 0, true);
     setTimeout(() => g.tr.classList.remove('glisse'), 200);
@@ -159,42 +174,83 @@ function reduire(el, ctx) {
   setTimeout(fin, 400); // si les animations sont coupées (réglage « réduire les animations »)
 }
 
+// Trait de repos sous chaque série (ou tour) ; sous celle qui a lancé le repos, la barre de décompte.
+// cle : exercice(s) dont le trait règle le repos (« 2,3 » pour un superset).
+function ligneRepos(w, ei, si, cols, cle, repos, nom) {
+  const actif = w.repos && w.repos.ei === ei && w.repos.si === si, reste = resteRepos(w);
+  const arrive = actif && w.repos.pause == null && Date.now() - (w.repos.fin - w.repos.duree * 1000) < 1000;
+  return `<tr class="ligne-repos ${actif ? 'actif' : ''}" ${actif ? 'data-repos-on' : ''}><td colspan="${cols}">
+    <div class="repos-trait"><span data-repos-txt="${cle}">${fmtChrono(repos)}</span>
+      <input type="time" class="repos-choix" data-repos-ex="${cle}" value="${valeurDuree(repos)}" aria-label="Repos de ${esc(nom)} (minutes : secondes)"></div>
+    ${actif ? `<button class="repos-actif ${arrive ? 'arrive' : ''}" data-act="repos" aria-label="Repos en cours : ouvrir le minuteur">
+      <span class="repos-reste" data-repos-rail style="width:${Math.min(100, reste / w.repos.duree * 100)}%"></span>
+      <span class="repos-chiffre" data-repos-temps>${fmtChrono(reste)}</span></button>` : ''}</td></tr>`;
+}
+
+const champSerie = (ei, si, s, nom, mode) => `<input data-champ="${nom}" data-ei="${ei}" data-si="${si}" inputmode="${mode}" enterkeyhint="done" autocomplete="off"
+  value="${s[nom] == null ? '' : fmtKg(s[nom])}" placeholder="${nom === 'rir' ? '–' : ''}" aria-label="${nom === 'kg' ? 'Charge' : nom === 'reps' ? 'Répétitions' : 'RIR'} série ${si + 1}">`;
+const blocConseil = (state, ex) => {
+  const c = conseil(ex, sessionsDe(state, ex.id));
+  return `<div class="conseil ${c.action === 'augmenter' ? 'pos' : c.action === 'decharger' ? 'warn' : ''}">${esc(c.texte)}</div>`;
+};
+const lienExo = (ex, nom) => `<a href="#/exercices/${encodeURIComponent(ex.id)}" style="color:inherit;text-decoration:none">${esc(nom)}</a>`;
+const boutonMenu = (ei, nom) => `<button class="btn btn-texte btn-sm btn-icone" data-act="menu-ex" data-ei="${ei}" aria-label="Options de ${esc(nom)}">${icon('plusieurs')}</button>`;
+
 function carte(state, ex, e, ei) {
-  const c = conseil(ex, sessionsDe(state, ex.id)), w = state.enCours, repos = ex.reposSec ?? 90;
-  const cols = e.afficherRir ? 6 : 5, reste = resteRepos(w);
+  const w = state.enCours, repos = ex.reposSec ?? 90, cols = e.afficherRir ? 6 : 5;
   let n = 0;
-  // Trait de repos sous chaque série ; sous la série qui a lancé le repos, la barre de décompte.
-  const ligneRepos = si => {
-    const actif = w.repos && w.repos.ei === ei && w.repos.si === si;
-    const arrive = actif && w.repos.pause == null && Date.now() - (w.repos.fin - w.repos.duree * 1000) < 1000;
-    return `<tr class="ligne-repos ${actif ? 'actif' : ''}" ${actif ? 'data-repos-on' : ''}><td colspan="${cols}">
-      <div class="repos-trait"><span data-repos-txt="${ei}">${fmtChrono(repos)}</span>
-        <input type="time" class="repos-choix" data-repos-ex="${ei}" value="${valeurDuree(repos)}" aria-label="Repos de ${esc(e.nomExercice)} (minutes : secondes)"></div>
-      ${actif ? `<button class="repos-actif ${arrive ? 'arrive' : ''}" data-act="repos" aria-label="Repos en cours : ouvrir le minuteur">
-        <span class="repos-reste" data-repos-rail style="width:${Math.min(100, reste / w.repos.duree * 100)}%"></span>
-        <span class="repos-chiffre" data-repos-temps>${fmtChrono(reste)}</span></button>` : ''}</td></tr>`;
-  };
-  return `<section class="card exo ${e.supersetGroupe ? 'superset' : ''}">
+  return `<section class="card exo">
     <div class="card-tete" style="margin:0">
-      <div style="min-width:0">${e.supersetGroupe ? `<div class="exo-groupe">Superset ${esc(e.supersetGroupe)}</div>` : ''}
-        <h2 class="exo-nom"><a href="#/exercices/${encodeURIComponent(ex.id)}" style="color:inherit;text-decoration:none">${esc(e.nomExercice)}</a></h2>
+      <div style="min-width:0"><h2 class="exo-nom">${lienExo(ex, e.nomExercice)}</h2>
         ${e.note ? `<div class="faint">${esc(e.note)}</div>` : ''}</div>
-      <button class="btn btn-texte btn-sm btn-icone" data-act="menu-ex" data-ei="${ei}" aria-label="Options de ${esc(e.nomExercice)}">${icon('plusieurs')}</button>
+      ${boutonMenu(ei, e.nomExercice)}
     </div>
-    <div class="conseil ${c.action === 'augmenter' ? 'pos' : c.action === 'decharger' ? 'warn' : ''}">${esc(c.texte)}</div>
+    ${blocConseil(state, ex)}
     <table class="series"><thead><tr><th>Série</th><th>Précédent</th><th>kg</th><th>Reps</th>${e.afficherRir ? '<th>RIR</th>' : ''}<th><span class="hidden">Fait</span>${icon('check')}</th></tr></thead><tbody>
     ${e.series.map((s, si) => {
       const num = s.echauffement ? 'É' : ++n;
-      const champ = (nom, mode) => `<input data-champ="${nom}" data-ei="${ei}" data-si="${si}" inputmode="${mode}" enterkeyhint="done" autocomplete="off"
-        value="${s[nom] == null ? '' : fmtKg(s[nom])}" placeholder="${nom === 'rir' ? '–' : ''}" aria-label="${nom === 'kg' ? 'Charge' : nom === 'reps' ? 'Répétitions' : 'RIR'} série ${si + 1}">`;
       return `<tr data-serie data-ei="${ei}" data-si="${si}" class="${s.faite ? 'faite' : ''} ${s.faite && vientDeCocher === `${ei}-${si}` ? 'vient' : ''}">
         <td class="n ${s.echauffement ? 'echauf' : ''}"><button data-act="serie" data-ei="${ei}" data-si="${si}" aria-label="Options de la série ${si + 1}">${num}</button></td>
         <td class="prec">${esc(precedent(state, ex.id, si) ?? '—')}</td>
-        <td>${champ('kg', 'decimal')}</td><td>${champ('reps', 'numeric')}</td>${e.afficherRir ? `<td>${champ('rir', 'numeric')}</td>` : ''}
+        <td>${champSerie(ei, si, s, 'kg', 'decimal')}</td><td>${champSerie(ei, si, s, 'reps', 'numeric')}</td>${e.afficherRir ? `<td>${champSerie(ei, si, s, 'rir', 'numeric')}</td>` : ''}
         <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>
-        ${ligneRepos(si)}`;
+        ${ligneRepos(w, ei, si, cols, ei, repos, e.nomExercice)}`;
     }).join('')}</tbody></table>
     <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}"><span>+ Série (<span data-repos-txt="${ei}">${fmtChrono(repos)}</span>)</span></button></div>
+  </section>`;
+}
+
+// Superset : un seul bloc. Chaque tour regroupe la série si de chaque exercice (une ligne par exercice)
+// et n'a qu'une coche, qui valide le tour et lance le repos (le plus long du groupe).
+function carteSuperset(state, E, eis) {
+  const w = state.enCours, es = eis.map(ei => w.entrees[ei]), exs = es.map(e => E[e.exerciseId]);
+  const repos = Math.max(...exs.map(x => x.reposSec ?? 90)), cle = eis.join(','), rir = es.some(e => e.afficherRir);
+  const lettre = ei => `<span class="ss-lettre">${'ABCDEFGH'[eis.indexOf(ei)]}</span>`;
+  const tours = Math.max(...es.map(e => e.series.length));
+  let n = 0;
+  return `<section class="card exo exo-superset">
+    <div class="exo-groupe">Superset</div>
+    ${es.map((e, i) => `<div class="card-tete" style="margin:0">
+        <div style="min-width:0"><h2 class="exo-nom">${lettre(eis[i])}${lienExo(exs[i], e.nomExercice)}</h2>
+          ${e.note ? `<div class="faint">${esc(e.note)}</div>` : ''}</div>
+        ${boutonMenu(eis[i], e.nomExercice)}</div>
+      ${blocConseil(state, exs[i])}`).join('')}
+    <table class="series" style="--cols:${rir ? 3 : 2}"><thead><tr><th>Tour</th>
+      <th><div class="ss-ligne"><span></span><span>Précédent</span><span>kg</span><span>Reps</span>${rir ? '<span>RIR</span>' : ''}</div></th>
+      <th><span class="hidden">Fait</span>${icon('check')}</th></tr></thead><tbody>
+    ${Array.from({ length: tours }, (_, si) => {
+      const lignes = eis.filter(ei => w.entrees[ei].series[si]), tour = lignes.join(','), ei0 = lignes[0];
+      const s0 = w.entrees[ei0].series[si], faite = lignes.every(ei => w.entrees[ei].series[si].faite);
+      const num = s0.echauffement ? 'É' : ++n;
+      return `<tr data-serie data-ei="${ei0}" data-si="${si}" data-tour="${tour}" class="${faite ? 'faite' : ''} ${faite && vientDeCocher === `${ei0}-${si}` ? 'vient' : ''}">
+        <td class="n ${s0.echauffement ? 'echauf' : ''}"><button data-act="serie" data-ei="${ei0}" data-si="${si}" data-tour="${tour}" aria-label="Options du tour ${si + 1}">${num}</button></td>
+        <td>${lignes.map(ei => { const e = w.entrees[ei], s = e.series[si]; return `<div class="ss-ligne">${lettre(ei)}
+          <span class="prec">${esc(precedent(state, e.exerciseId, si) ?? '—')}</span>${champSerie(ei, si, s, 'kg', 'decimal')}${champSerie(ei, si, s, 'reps', 'numeric')}
+          ${rir ? (e.afficherRir ? champSerie(ei, si, s, 'rir', 'numeric') : '<span></span>') : ''}</div>`; }).join('')}</td>
+        <td><button class="coche" style="height:${lignes.length * 48 - 4}px" data-act="coche-tour" data-ei="${ei0}" data-si="${si}" data-tour="${tour}" aria-pressed="${faite}" aria-label="Tour ${si + 1} fait">${icon('check')}</button></td></tr>
+        ${ligneRepos(w, ei0, si, 3, cle, repos, 'ce superset')}`;
+    }).join('')}</tbody></table>
+    <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="tour-plus" data-tour="${cle}"><span>+ Tour (<span data-repos-txt="${cle}">${fmtChrono(repos)}</span>)</span></button></div>
   </section>`;
 }
 
@@ -232,15 +288,17 @@ function menuRepos(ctx) {
   });
 }
 
-function menuSerie(ctx, ei, si) {
-  const s = ctx.state.enCours.entrees[ei].series[si];
-  const f = ouvrirFeuille({ titre: `Série ${si + 1}`, corps: `
-    <button class="btn btn-secondary btn-bloc" data-m="echauf" style="margin-bottom:8px">${s.echauffement ? 'Marquer comme série de travail' : 'Marquer comme échauffement'}</button>
-    <button class="btn btn-danger btn-bloc" data-m="suppr">Supprimer la série</button>` });
+// eis : un exercice, ou tous ceux d'un tour de superset (le menu agit alors sur le tour entier).
+function menuSerie(ctx, eis, si) {
+  const s = ctx.state.enCours.entrees[eis[0]].series[si], tour = eis.length > 1;
+  const f = ouvrirFeuille({ titre: `${tour ? 'Tour' : 'Série'} ${si + 1}`, corps: `
+    <button class="btn btn-secondary btn-bloc" data-m="echauf" style="margin-bottom:8px">${s.echauffement ? `Marquer comme ${tour ? 'tour' : 'série'} de travail` : 'Marquer comme échauffement'}</button>
+    <button class="btn btn-danger btn-bloc" data-m="suppr">Supprimer ${tour ? 'le tour' : 'la série'}</button>` });
   f.addEventListener('click', e => {
     const m = e.target.closest('[data-m]')?.dataset.m;
     if (!m) return;
-    ctx.maj(st => ({ ...st, enCours: m === 'echauf' ? basculerEchauffement(st.enCours, ei, si) : supprimerSerie(st.enCours, ei, si) }));
+    const fn = m === 'echauf' ? basculerEchauffement : supprimerSerie;
+    ctx.maj(st => ({ ...st, enCours: eis.reduce((w, ei) => fn(w, ei, si), st.enCours) }));
     fermerFeuille(f);
   });
 }

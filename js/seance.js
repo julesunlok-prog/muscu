@@ -48,15 +48,20 @@ export function cocher(w, ei, si, state, now = new Date()) {
   if (s.faite) return surSerie(w, ei, si, x => ({ ...x, faite: false }));
   if (!valide(s, state, w.entrees[ei])) return w;
   const suivant = surSerie(w, ei, si, x => ({ ...x, faite: true }));
-  const e = w.entrees[ei];
-  // Superset : le repos ne démarre qu'après le dernier exercice du groupe.
-  if (e.supersetGroupe) {
-    const dernier = w.entrees.reduce((m, x, i) => x.supersetGroupe === e.supersetGroupe ? i : m, -1);
-    if (ei !== dernier) return suivant;
-  }
-  const duree = exDe(state, e.exerciseId)?.reposSec ?? 90;
+  const duree = exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90;
   // ei / si : série sous laquelle s'affiche la barre de repos.
   return { ...suivant, repos: { fin: now.getTime() + duree * 1000, duree, ei, si } };
+}
+
+// Superset : un tour = la série si de chaque exercice du groupe (eis). Une coche valide tout le tour,
+// puis lance le plus long repos du groupe. Rien n'est coché si une ligne du tour est incomplète.
+export function cocherTour(w, eis, si, state, now = new Date()) {
+  const lignes = eis.filter(ei => w.entrees[ei].series[si]);
+  if (lignes.every(ei => w.entrees[ei].series[si].faite)) return lignes.reduce((x, ei) => surSerie(x, ei, si, s => ({ ...s, faite: false })), w);
+  if (!lignes.every(ei => w.entrees[ei].series[si].faite || valide(w.entrees[ei].series[si], state, w.entrees[ei]))) return w;
+  const suivant = lignes.reduce((x, ei) => surSerie(x, ei, si, s => ({ ...s, faite: true })), w);
+  const duree = Math.max(...eis.map(ei => exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90));
+  return { ...suivant, repos: { fin: now.getTime() + duree * 1000, duree, ei: lignes[0], si } };
 }
 
 // Série prête à être validée : reps et charge saisies (charge 0 permise au poids du corps).

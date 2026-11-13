@@ -272,6 +272,13 @@ button:disabled > .tic { display: none; }
 .coche { width: 44px; height: 44px; border-radius: 10px; border: 0; background: var(--chip); color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform .16s var(--out), background .15s, color .15s; }
 .coche:active { transform: scale(.92); }
 .faite .coche { background: var(--pos); color: var(--sur-couleur); }
+/* Superset : une carte, un tour par rangée (une ligne par exercice), une seule coche haute par tour. */
+.exo-superset .card-tete + .conseil { margin: 6px 0 10px; }
+.ss-lettre { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; font-weight: 700; }
+.exo-nom .ss-lettre { margin-right: 8px; vertical-align: 2px; }
+.ss-ligne { display: grid; grid-template-columns: 20px minmax(0, 1fr) repeat(var(--cols, 2), minmax(0, 74px)); gap: 4px; align-items: center; justify-items: center; }
+.ss-ligne + .ss-ligne { margin-top: 4px; }
+.ss-ligne .prec { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--faint); }
 .exo-actions { display: flex; gap: 8px; margin-top: 8px; }
 .exo-actions .btn { flex: 1; }
 
