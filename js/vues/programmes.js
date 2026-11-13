@@ -1,7 +1,7 @@
 // Écran Entraînement : programmes, « Débuter », séance vide, édition d'un programme.
 import { demarrer } from '../seance.js';
 import { NOM_MUSCLE } from '../profils.js';
-import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
+import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur, tic } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
 
@@ -45,6 +45,7 @@ export function render(el, ctx) {
     const { act, id } = b.dataset;
     if (act === 'reprendre') return ctx.aller('#/seance');
     if (act === 'debuter' || act === 'vide') {
+      tic();
       if (state.enCours && !await confirmer(`« ${state.enCours.nom} » est déjà en cours. La remplacer par une nouvelle séance ? Ce qui n’a pas été terminé sera perdu.`, { titre: 'Remplacer la séance en cours ?', ok: 'Remplacer', danger: true })) return;
       ctx.maj(s => ({ ...s, enCours: demarrer(s, act === 'vide' ? null : id, new Date()) }), { rendre: false });
       return ctx.aller('#/seance');

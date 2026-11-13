@@ -59,6 +59,7 @@
 /* ---------- Base ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--ground); color: var(--text); }
+html { touch-action: manipulation; } /* pas de zoom au double toucher sur iPhone (le pincement reste possible) */
 body { font: 400 15px/1.47 var(--font); font-variant-numeric: tabular-nums; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--accent-ink); }
@@ -150,11 +151,12 @@ textarea.form-control { height: auto; min-height: 80px; padding: 8px 11px; resiz
 /* Roulette façon minuteur iPhone : 5 lignes de 36 px, la ligne du milieu est la valeur choisie. */
 .roues { position: relative; display: flex; justify-content: center; align-items: center; height: 180px; }
 .roues::before { content: ''; position: absolute; left: 0; right: 0; top: 72px; height: 36px; border-radius: var(--r-sm); background: var(--chip); }
-.roue { position: relative; width: 56px; height: 100%; padding: 72px 0; overflow-y: auto; scroll-snap-type: y mandatory; scrollbar-width: none; overscroll-behavior: contain;
+/* Le défilement est géré en JS (touch-action: none) : le doigt sur la roue ne fait jamais bouger la page. */
+.roue { position: relative; width: 72px; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab;
   -webkit-mask-image: linear-gradient(transparent, #000 38%, #000 62%, transparent); mask-image: linear-gradient(transparent, #000 38%, #000 62%, transparent); }
-.roue::-webkit-scrollbar { display: none; }
 .roue:focus-visible { outline: 2px solid var(--accent); border-radius: var(--r-sm); }
-.roue > div { height: 36px; line-height: 36px; text-align: right; padding-right: 6px; font-size: 22px; font-variant-numeric: tabular-nums; scroll-snap-align: center; cursor: pointer; }
+.roue-piste { padding-top: 72px; will-change: transform; }
+.roue-piste > div { height: 36px; line-height: 36px; text-align: right; padding-right: 6px; font-size: 22px; font-variant-numeric: tabular-nums; }
 .roue-unite { position: relative; width: 44px; font-size: 16px; font-weight: 600; }
 .err-msg { font-size: 12.5px; color: var(--neg-ink); margin-top: 4px; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pilule); background: var(--chip); flex-wrap: wrap; }

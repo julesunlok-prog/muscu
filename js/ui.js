@@ -90,33 +90,81 @@ export function fermerFeuille(f) {
   setTimeout(() => { f.remove(); f._voile.remove(); }, 160);
 }
 
-// Roulette de durée façon minuteur iPhone : colonnes minutes / secondes à défilement aimanté.
+// Retour haptique. iOS 18+ : basculer un interrupteur natif fait un « tic » (seul moyen sur le web, sans effet avant iOS 18).
+// Android : vibration courte.
+export function tic() {
+  try {
+    if (navigator.vibrate) return void navigator.vibrate(8);
+    const l = document.createElement('label');
+    l.ariaHidden = 'true'; l.style.display = 'none'; l.innerHTML = '<input type="checkbox" switch>';
+    document.head.appendChild(l); l.click(); l.remove();
+  } catch { /* pas de retour haptique */ }
+}
+
+// Roulette de durée façon minuteur iPhone : colonnes minutes / secondes. Défilement fait main (glisser, lancer, aimant),
+// pour que le doigt sur la roue ne fasse pas défiler la page ou la feuille.
 const MINUTES = [...Array(16).keys()], SECONDES = [...Array(12).keys()].map(i => i * 5);
 const colonne = (nom, valeurs, unite) => `<div class="roue" tabindex="0" role="spinbutton" aria-label="${nom}" aria-valuemin="${valeurs[0]}" aria-valuemax="${valeurs.at(-1)}">
-  ${valeurs.map(v => `<div>${v}</div>`).join('')}</div><span class="roue-unite" aria-hidden="true">${unite}</span>`;
+  <div class="roue-piste">${valeurs.map(v => `<div>${v}</div>`).join('')}</div></div><span class="roue-unite" aria-hidden="true">${unite}</span>`;
 export const roueDuree = (id, sec) => `<div class="roues" id="${id}" role="group" aria-labelledby="${id}-titre" data-sec="${sec}">${colonne('Minutes', MINUTES, 'min')}${colonne('Secondes', SECONDES, 's')}</div>`;
 
-const pas = r => r.firstElementChild.offsetHeight;
-const indice = r => Math.min(r.children.length - 1, Math.max(0, Math.round(r.scrollTop / pas(r))));
-const aria = r => r.setAttribute('aria-valuenow', r.children[indice(r)].textContent);
-export const lireRoue = el => { const [m, s] = el.querySelectorAll('.roue'); return MINUTES[indice(m)] * 60 + SECONDES[indice(s)]; };
+const H = 36; // hauteur d'une ligne, comme dans styles.css
+export const lireRoue = el => { const [m, s] = el.querySelectorAll('.roue'); return MINUTES[m._cible ?? 0] * 60 + SECONDES[s._cible ?? 0]; };
 export function reglerRoue(el, sec) {
   sec = Math.min(MINUTES.at(-1) * 60 + 55, Math.round(sec / 5) * 5);
   const [m, s] = el.querySelectorAll('.roue');
-  m.scrollTop = Math.floor(sec / 60) * pas(m); s.scrollTop = (sec % 60) / 5 * pas(s);
-  aria(m); aria(s);
+  m._aller?.(Math.floor(sec / 60), false); s._aller?.((sec % 60) / 5, false);
 }
-// À appeler une fois la roulette dans la page (il faut sa hauteur pour la positionner).
+// À appeler une fois la roulette dans la page.
 export function brancherRoues(racine) {
   racine.querySelectorAll('.roues').forEach(el => {
-    el.querySelectorAll('.roue').forEach(r => {
-      const aller = i => r.scrollTo({ top: i * pas(r), behavior: 'smooth' });
-      r.onscroll = () => aria(r);
-      r.onclick = e => { const i = [...r.children].indexOf(e.target); if (i >= 0) aller(i); };
-      r.onkeydown = e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); aller(indice(r) + d); } };
-    });
+    el.querySelectorAll('.roue').forEach(brancherRoue);
     reglerRoue(el, +el.dataset.sec);
   });
+}
+
+function brancherRoue(r) {
+  const piste = r.firstElementChild, n = piste.children.length, max = (n - 1) * H;
+  let y = 0, anim = 0, vu = 0, toucher = null;
+  const poser = v => {
+    y = v; piste.style.transform = `translateY(${-y}px)`;
+    const i = Math.min(n - 1, Math.max(0, Math.round(y / H)));
+    if (i !== vu) { vu = i; tic(); r.setAttribute('aria-valuenow', piste.children[i].textContent); }
+  };
+  // Va à la ligne i, en glissant (ease-out) ou d'un coup.
+  r._aller = (i, anime = true) => {
+    cancelAnimationFrame(anim);
+    i = Math.min(n - 1, Math.max(0, i)); r._cible = i;
+    if (!anime) { vu = i; r.setAttribute('aria-valuenow', piste.children[i].textContent); return poser(i * H); }
+    const de = y, a = i * H, duree = Math.min(700, 220 + Math.abs(a - de) * 1.5), t0 = performance.now();
+    const pas = t => { const k = Math.min(1, (t - t0) / duree); poser(de + (a - de) * (1 - (1 - k) ** 3)); if (k < 1) anim = requestAnimationFrame(pas); };
+    anim = requestAnimationFrame(pas);
+  };
+  r.onpointerdown = e => {
+    cancelAnimationFrame(anim);
+    try { r.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+    toucher = { y0: e.clientY, depart: y, bouge: false, pts: [[e.clientY, e.timeStamp]] };
+  };
+  r.onpointermove = e => {
+    if (!toucher) return;
+    const d = toucher.y0 - e.clientY;
+    if (Math.abs(d) > 4) toucher.bouge = true;
+    // Au-delà des bords, la roue résiste (élastique) au lieu de s'arrêter net.
+    const v = toucher.depart + d;
+    poser(v < 0 ? v / 3 : v > max ? max + (v - max) / 3 : v);
+    toucher.pts = [...toucher.pts.slice(-4), [e.clientY, e.timeStamp]];
+  };
+  r.onpointerup = r.onpointercancel = e => {
+    if (!toucher) return;
+    const t = toucher; toucher = null;
+    if (!t.bouge) // simple toucher : va à la ligne touchée (la ligne du milieu est à 2,5 lignes du haut)
+      return r._aller(Math.round(y / H + (e.clientY - r.getBoundingClientRect().top) / H - 2.5));
+    const [[y1, t1], [y2, t2]] = [t.pts[0], t.pts.at(-1)];
+    const vitesse = t2 > t1 ? (y1 - y2) / (t2 - t1) : 0; // px/ms
+    r._aller(Math.round((y + vitesse * 180) / H)); // lancer : la roue continue sur son élan
+  };
+  r.onwheel = e => { e.preventDefault(); r._aller(r._cible + Math.sign(e.deltaY)); };
+  r.onkeydown = e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); r._aller(r._cible + d); } };
 }
 
 export function champErreur(input, message) {
