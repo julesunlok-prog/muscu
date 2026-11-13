@@ -5,6 +5,7 @@ import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
   pauserRepos, reprendreRepos, recommencerRepos, lancerRepos } from '../seance.js';
 import { conseil, sessionsDe, e1rm } from '../moteur.js';
+import * as programmes from './programmes.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
   champDuree, lireDuree, valeurDuree } from '../ui.js';
 
@@ -146,32 +147,78 @@ function glisserPourSupprimer(el, ctx) {
 }
 
 // Poignée : glisser l'en-tête vers le bas (ou toucher la poignée) réduit la séance ; elle continue, « Reprendre » la rouvre.
+// L'accueil est posé dessous dès le premier pixel, la séance suit le doigt puis part d'où on la lâche (ou d'un coup sec).
 function glisserPourReduire(el, ctx) {
   const tete = el.querySelector('[data-tete]');
   tete.addEventListener('touchmove', e => e.preventDefault(), { passive: false }); // sinon Safari fait défiler la page
   tete.onpointerdown = e => {
     if (e.target.closest('button:not(.poignee)')) return;
     const y0 = e.clientY;
-    let dy = 0;
+    let dy = 0, v = 0, y = y0, t = e.timeStamp;
     try { tete.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
-    tete.onpointermove = m => { dy = Math.max(0, m.clientY - y0); el.style.transform = dy ? `translateY(${dy}px)` : ''; };
-    tete.onpointerup = tete.onpointercancel = () => {
+    tete.onpointermove = m => {
+      dy = Math.max(0, m.clientY - y0);
+      v = (m.clientY - y) / Math.max(1, m.timeStamp - t); y = m.clientY; t = m.timeStamp; // vitesse, px/ms
+      if (dy) poser(el, ctx, dy);
+    };
+    tete.onpointerup = tete.onpointercancel = u => {
       tete.onpointermove = tete.onpointerup = tete.onpointercancel = null;
-      if (dy > 90) return reduire(el, ctx);
-      if (!dy) return;
-      el.classList.add('revient'); el.style.transform = '';
-      setTimeout(() => el.classList.remove('revient'), 260);
+      if (!dy) return; // simple toucher : le clic sur la poignée s'en charge
+      sansClicJusqua = Date.now() + 400;
+      if (u.type === 'pointerup' && (dy > 120 || (v > 0.4 && dy > 16))) return reduire(el, ctx);
+      lacher(el, 0, () => defaire(el));
     };
   };
 }
 
+// Séance décalée de dy px au-dessus d'une copie de l'accueil. Le découpage cache ce qui est au-dessus de l'écran
+// quand la séance est défilée : c'est le haut visible (l'en-tête) qui descend, pas le haut de la page.
+function poser(el, ctx, dy) {
+  let sous = document.querySelector('.sous-seance');
+  if (!sous) {
+    sous = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'sous-seance' }));
+    programmes.render(sous, ctx);
+    const bandeau = el.querySelector('.bandeau-demo');
+    if (bandeau) sous.prepend(bandeau.cloneNode(true));
+    el.style.clipPath = `inset(${Math.max(0, -el.getBoundingClientRect().top)}px 0 0 0 round var(--r-xl) var(--r-xl) 0 0)`;
+    el.classList.add('tire');
+  }
+  el.style.transition = '';
+  el.style.transform = `translateY(${dy}px)`;
+  sous.style.setProperty('--voile', String(1 - Math.min(1, dy / innerHeight)));
+}
+
+// Anime la séance jusqu'à y px depuis sa position actuelle, puis fin().
+function lacher(el, y, fin) {
+  el.style.transition = 'transform .3s var(--out)';
+  el.style.transform = `translateY(${y}px)`;
+  document.querySelector('.sous-seance')?.style.setProperty('--voile', y ? '0' : '1');
+  let fait = false;
+  const f = () => { if (fait) return; fait = true; el.removeEventListener('transitionend', h); fin(); };
+  const h = e => { if (e.target === el) f(); }; // transitionend remonte aussi des enfants
+  el.addEventListener('transitionend', h);
+  setTimeout(f, 450); // si les animations sont coupées (réglage « réduire les animations »)
+}
+
+function defaire(el) {
+  el.classList.remove('tire');
+  el.style.transition = el.style.transform = el.style.clipPath = '';
+  document.querySelector('.sous-seance')?.remove();
+}
+
+let reduction = false;
 function reduire(el, ctx) {
-  if (el.classList.contains('reduit')) return;
-  el.style.animation = ''; // l'animation en ligne « none » (réaffichage) masquerait celle de la classe
-  el.classList.add('reduit');
-  const fin = () => { if (!el.classList.contains('reduit')) return; el.classList.remove('reduit'); el.style.transform = ''; ctx.aller('#/programmes'); };
-  el.addEventListener('animationend', fin, { once: true });
-  setTimeout(fin, 400); // si les animations sont coupées (réglage « réduire les animations »)
+  if (reduction) return;
+  reduction = true;
+  if (!document.querySelector('.sous-seance')) { poser(el, ctx, 0); el.getBoundingClientRect(); } // toucher la poignée : part de 0
+  lacher(el, innerHeight, () => {
+    // L'accueil remplace la séance dans la même image que la copie disparaît : pas de saut ni d'animation d'entrée.
+    history.pushState(null, '', '#/programmes');
+    ctx.rendre();
+    defaire(el);
+    el.style.animation = 'none'; el.setAttribute('data-meme', '');
+    reduction = false;
+  });
 }
 
 // Trait de repos sous chaque série (ou tour) ; sous celle qui a lancé le repos, la barre de décompte.

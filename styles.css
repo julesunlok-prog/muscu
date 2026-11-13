@@ -194,8 +194,12 @@ button:disabled > .tic { display: none; }
 .feuille.carte-pop.sort { animation: pop .16s var(--in) reverse forwards; }
 .feuille.carte-pop .feuille-pied { padding-bottom: 14px; }
 @keyframes pop { from { opacity: 0; transform: translateY(-50%) scale(.9); } to { opacity: 1; transform: translateY(-50%); } }
-#vue.reduit { animation: descend .28s var(--in) forwards; }
-#vue.revient { transition: transform .25s var(--out); }
+/* Glisser la séance vers le bas : copie figée de l'accueil dessous, voilée, que la séance découvre en descendant. */
+.sous-seance { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; max-width: 640px; margin: 0 auto;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 0; }
+.sous-seance .card { animation: none; }
+.sous-seance::after { content: ''; position: fixed; inset: 0; background: var(--scrim); opacity: var(--voile, 1); }
+#vue.tire { position: relative; z-index: 1; min-height: 100vh; background: var(--ground); will-change: transform; }
 #vue[data-meme] .card { animation: none; }
 .card.programme { cursor: pointer; }
 

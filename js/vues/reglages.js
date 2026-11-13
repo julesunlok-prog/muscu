@@ -18,6 +18,12 @@ export function render(el, ctx) {
         `<button data-theme="${k}" aria-pressed="${theme === k}">${l}</button>`).join('')}</div>
     </section>
 
+    ${ctx.demo ? '' : `<section class="card">
+      <h2 class="card-title" style="margin-bottom:6px">Démo</h2>
+      <p class="faint" style="margin:0 0 12px">12 semaines de séances fictives pour voir les conseils et les analyses. Tes données ne sont pas touchées : « Quitter » les fait revenir.</p>
+      <button class="btn btn-secondary btn-bloc" data-lancer-demo>Voir la démo</button>
+    </section>`}
+
     <section class="card">
       <h2 class="card-title" style="margin-bottom:6px">Muscles prioritaires et cibles</h2>
       <p class="faint" style="margin:0 0 10px">Séries par semaine. Un muscle prioritaire vise 14 par défaut, les autres 10.</p>
