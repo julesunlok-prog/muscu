@@ -222,7 +222,8 @@ textarea.form-control { height: auto; min-height: 80px; padding: 8px 11px; resiz
 .voile.sort { animation: fade .16s ease reverse forwards; }
 .feuille-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 20px 6px; }
 .feuille-tete h2 { font-size: 19px; font-weight: 600; margin: 0; color: var(--title); }
-.feuille-corps { padding: 12px 20px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.feuille-corps { padding: 12px 20px 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.feuille-ouverte, .feuille-ouverte body { overflow: hidden; } /* la page derrière une feuille ne défile pas */
 .feuille-pied { display: flex; gap: 8px; justify-content: flex-end; padding: 14px 20px calc(14px + var(--bas)); border-top: 1px solid var(--rule); }
 .feuille-pied .btn { flex: 1; }
 .fermer { width: 44px; height: 44px; border: 0; background: none; border-radius: 50%; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }

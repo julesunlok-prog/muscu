@@ -78,7 +78,9 @@ export function ouvrirFeuille({ titre, corps, pied = '' }) {
   f.innerHTML = `<div class="feuille-tete"><h2>${esc(titre)}</h2><button class="fermer" data-fermer aria-label="Fermer">${icon('close')}</button></div>
     <div class="feuille-corps">${corps}</div>${pied ? `<div class="feuille-pied">${pied}</div>` : ''}`;
   f._voile = v;
+  document.documentElement.classList.add('feuille-ouverte');
   v.onclick = () => fermerFeuille(f);
+  v.addEventListener('touchmove', e => e.preventDefault(), { passive: false }); // glisser sur le voile ne fait pas défiler la page
   f.addEventListener('click', e => { if (e.target.closest('[data-fermer]')) fermerFeuille(f); });
   document.body.appendChild(f);
   return f;
@@ -87,7 +89,10 @@ export function ouvrirFeuille({ titre, corps, pied = '' }) {
 export function fermerFeuille(f) {
   if (!f.isConnected) return;
   f.classList.add('sort'); f._voile.classList.add('sort');
-  setTimeout(() => { f.remove(); f._voile.remove(); }, 160);
+  setTimeout(() => {
+    f.remove(); f._voile.remove();
+    if (!document.querySelector('.feuille')) document.documentElement.classList.remove('feuille-ouverte');
+  }, 160);
 }
 
 // Retour haptique. iOS 18+ : basculer un interrupteur natif fait un « tic » (seul moyen sur le web, sans effet avant iOS 18).
