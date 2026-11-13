@@ -95,88 +95,16 @@ export function fermerFeuille(f) {
   }, 160);
 }
 
-// Retour haptique. iOS 18+ : basculer un interrupteur natif fait un « tic » (seul moyen sur le web, sans effet avant iOS 18).
-// Android : vibration courte.
-let interrupteur = null;
-export function tic() {
-  try {
-    if (navigator.vibrate) return void navigator.vibrate(8);
-    // Interrupteur rendu mais invisible (un élément en display:none peut être ignoré par iOS).
-    interrupteur ??= Object.assign(document.body.appendChild(document.createElement('label')), {
-      ariaHidden: 'true', innerHTML: '<input type="checkbox" switch tabindex="-1">',
-      style: 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none' });
-    interrupteur.click();
-  } catch { /* pas de retour haptique */ }
-}
+// Retour haptique. Android : vibration courte via tic().
+// iPhone (testé iOS 26.5) : seul un vrai toucher sur un interrupteur natif fait un « tic » ; le déclencher par code ne marche pas.
+// On pose donc TIC, un interrupteur transparent, par-dessus le bouton : le toucher l'actionne et le clic remonte au bouton.
+export const tic = () => { try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } };
+export const TIC = '<input type="checkbox" switch class="tic" tabindex="-1" aria-hidden="true">';
 
-// Roulette de durée façon minuteur iPhone : colonnes minutes / secondes. Défilement fait main (glisser, lancer, aimant),
-// pour que le doigt sur la roue ne fasse pas défiler la page ou la feuille.
-const MINUTES = [...Array(16).keys()], SECONDES = [...Array(12).keys()].map(i => i * 5);
-const colonne = (nom, valeurs, unite) => `<div class="roue" tabindex="0" role="spinbutton" aria-label="${nom}" aria-valuemin="${valeurs[0]}" aria-valuemax="${valeurs.at(-1)}">
-  <div class="roue-piste">${valeurs.map(v => `<div>${v}</div>`).join('')}</div></div><span class="roue-unite" aria-hidden="true">${unite}</span>`;
-export const roueDuree = (id, sec) => `<div class="roues" id="${id}" role="group" aria-labelledby="${id}-titre" data-sec="${sec}">${colonne('Minutes', MINUTES, 'min')}${colonne('Secondes', SECONDES, 's')}</div>`;
-
-const H = 36; // hauteur d'une ligne, comme dans styles.css
-export const lireRoue = el => { const [m, s] = el.querySelectorAll('.roue'); return MINUTES[m._cible ?? 0] * 60 + SECONDES[s._cible ?? 0]; };
-export function reglerRoue(el, sec) {
-  sec = Math.min(MINUTES.at(-1) * 60 + 55, Math.round(sec / 5) * 5);
-  const [m, s] = el.querySelectorAll('.roue');
-  m._aller?.(Math.floor(sec / 60), false); s._aller?.((sec % 60) / 5, false);
-}
-// À appeler une fois la roulette dans la page.
-export function brancherRoues(racine) {
-  racine.querySelectorAll('.roues').forEach(el => {
-    el.querySelectorAll('.roue').forEach(brancherRoue);
-    reglerRoue(el, +el.dataset.sec);
-  });
-}
-
-function brancherRoue(r) {
-  const piste = r.firstElementChild, n = piste.children.length, max = (n - 1) * H;
-  let y = 0, anim = 0, vu = 0, toucher = null;
-  const poser = v => {
-    y = v; piste.style.transform = `translateY(${-y}px)`;
-    const i = Math.min(n - 1, Math.max(0, Math.round(y / H)));
-    if (i !== vu) { vu = i; tic(); r.setAttribute('aria-valuenow', piste.children[i].textContent); }
-  };
-  // Va à la ligne i, en glissant (ease-out) ou d'un coup.
-  r._aller = (i, anime = true) => {
-    cancelAnimationFrame(anim);
-    i = Math.min(n - 1, Math.max(0, i)); r._cible = i;
-    if (!anime) { vu = i; r.setAttribute('aria-valuenow', piste.children[i].textContent); return poser(i * H); }
-    const de = y, a = i * H, duree = Math.min(700, 220 + Math.abs(a - de) * 1.5), t0 = performance.now();
-    const pas = t => { const k = Math.min(1, (t - t0) / duree); poser(de + (a - de) * (1 - (1 - k) ** 3)); if (k < 1) anim = requestAnimationFrame(pas); };
-    anim = requestAnimationFrame(pas);
-  };
-  r.onpointerdown = e => {
-    cancelAnimationFrame(anim);
-    try { r.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
-    toucher = { y0: e.clientY, depart: y, bouge: false, pts: [[e.clientY, e.timeStamp]] };
-  };
-  r.onpointermove = e => {
-    if (!toucher) return;
-    const d = toucher.y0 - e.clientY;
-    if (Math.abs(d) > 4) toucher.bouge = true;
-    // Au-delà des bords, la roue résiste (élastique) au lieu de s'arrêter net.
-    const v = toucher.depart + d;
-    poser(v < 0 ? v / 3 : v > max ? max + (v - max) / 3 : v);
-    toucher.pts = [...toucher.pts.slice(-4), [e.clientY, e.timeStamp]];
-  };
-  r.onpointerup = r.onpointercancel = e => {
-    if (!toucher) return;
-    const t = toucher; toucher = null;
-    if (!t.bouge) // simple toucher : va à la ligne touchée (la ligne du milieu est à 2,5 lignes du haut)
-      return r._aller(Math.round(y / H + (e.clientY - r.getBoundingClientRect().top) / H - 2.5));
-    const [[y1, t1], [y2, t2]] = [t.pts[0], t.pts.at(-1)];
-    const vitesse = t2 > t1 ? (y1 - y2) / (t2 - t1) : 0; // px/ms
-    r._aller(Math.round((y + vitesse * 180) / H)); // lancer : la roue continue sur son élan
-  };
-  // Sur iPhone, touch-action ne suffit pas : sans ceci, Safari fait défiler la page et annule le glisser.
-  r.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-  r.addEventListener('touchend', e => e.preventDefault(), { passive: false }); // pas de zoom en touchant vite la roue (le choix passe par pointerup)
-  r.onwheel = e => { e.preventDefault(); r._aller(r._cible + Math.sign(e.deltaY)); };
-  r.onkeydown = e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); r._aller(r._cible + d); } };
-}
+// Choix d'une durée de repos : liste native, qui ouvre la vraie roulette d'iOS (tic haptique compris).
+const fmtRepos = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
+export const choixDuree = (id, sec) => `<select id="${id}" class="form-control">${[...new Set([...Array(41).keys()].map(i => i * 15).concat(sec))]
+  .sort((a, b) => a - b).map(v => `<option value="${v}" ${v === sec ? 'selected' : ''}>${fmtRepos(v)}</option>`).join('')}</select>`;
 
 export function champErreur(input, message) {
   input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');

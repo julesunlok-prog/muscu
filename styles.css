@@ -148,16 +148,10 @@ label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--
 .form-control:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea.form-control { height: auto; min-height: 80px; padding: 8px 11px; resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-/* Roulette façon minuteur iPhone : 5 lignes de 36 px, la ligne du milieu est la valeur choisie. */
-.roues { position: relative; display: flex; justify-content: center; align-items: center; height: 180px; }
-.roues::before { content: ''; position: absolute; left: 0; right: 0; top: 72px; height: 36px; border-radius: var(--r-sm); background: var(--chip); }
-/* Le défilement est géré en JS (touch-action: none) : le doigt sur la roue ne fait jamais bouger la page. */
-.roue { position: relative; width: 72px; height: 100%; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab;
-  -webkit-mask-image: linear-gradient(transparent, #000 38%, #000 62%, transparent); mask-image: linear-gradient(transparent, #000 38%, #000 62%, transparent); }
-.roue:focus-visible { outline: 2px solid var(--accent); border-radius: var(--r-sm); }
-.roue-piste { padding-top: 72px; will-change: transform; }
-.roue-piste > div { height: 36px; line-height: 36px; text-align: right; padding-right: 6px; font-size: 22px; font-variant-numeric: tabular-nums; }
-.roue-unite { position: relative; width: 44px; font-size: 16px; font-weight: 600; }
+/* Interrupteur transparent posé sur un bouton : donne le « tic » haptique de l'iPhone au toucher. */
+:has(> .tic) { position: relative; }
+.tic { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+
 .err-msg { font-size: 12.5px; color: var(--neg-ink); margin-top: 4px; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--pilule); background: var(--chip); flex-wrap: wrap; }
 .seg button { border: 0; background: none; padding: 0 14px; height: 36px; border-radius: var(--pilule); font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; transition: background var(--tr), color var(--tr); }
