@@ -59,7 +59,7 @@
 /* ---------- Base ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--ground); color: var(--text); }
-html { touch-action: manipulation; } /* pas de zoom au double toucher sur iPhone (le pincement reste possible) */
+*, html { touch-action: manipulation; } /* pas de zoom au double toucher sur iPhone (le pincement reste possible) */
 body { font: 400 15px/1.47 var(--font); font-variant-numeric: tabular-nums; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
 button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--accent-ink); }

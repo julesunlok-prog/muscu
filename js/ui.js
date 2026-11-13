@@ -92,12 +92,15 @@ export function fermerFeuille(f) {
 
 // Retour haptique. iOS 18+ : basculer un interrupteur natif fait un « tic » (seul moyen sur le web, sans effet avant iOS 18).
 // Android : vibration courte.
+let interrupteur = null;
 export function tic() {
   try {
     if (navigator.vibrate) return void navigator.vibrate(8);
-    const l = document.createElement('label');
-    l.ariaHidden = 'true'; l.style.display = 'none'; l.innerHTML = '<input type="checkbox" switch>';
-    document.head.appendChild(l); l.click(); l.remove();
+    // Interrupteur rendu mais invisible (un élément en display:none peut être ignoré par iOS).
+    interrupteur ??= Object.assign(document.body.appendChild(document.createElement('label')), {
+      ariaHidden: 'true', innerHTML: '<input type="checkbox" switch tabindex="-1">',
+      style: 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none' });
+    interrupteur.click();
   } catch { /* pas de retour haptique */ }
 }
 
@@ -163,6 +166,9 @@ function brancherRoue(r) {
     const vitesse = t2 > t1 ? (y1 - y2) / (t2 - t1) : 0; // px/ms
     r._aller(Math.round((y + vitesse * 180) / H)); // lancer : la roue continue sur son élan
   };
+  // Sur iPhone, touch-action ne suffit pas : sans ceci, Safari fait défiler la page et annule le glisser.
+  r.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  r.addEventListener('touchend', e => e.preventDefault(), { passive: false }); // pas de zoom en touchant vite la roue (le choix passe par pointerup)
   r.onwheel = e => { e.preventDefault(); r._aller(r._cible + Math.sign(e.deltaY)); };
   r.onkeydown = e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); r._aller(r._cible + d); } };
 }

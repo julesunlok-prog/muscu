@@ -157,6 +157,7 @@ document.getElementById('onglets').innerHTML = ONGLETS.map(([nom, ic, libelle]) 
   `<a href="#/${nom}" data-nom="${nom}">${icon(ic)}<span>${esc(libelle)}</span></a>`).join('');
 document.getElementById('reprise').querySelector('button').onclick = () => ctx.aller('#/seance');
 window.addEventListener('hashchange', afficher);
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false }); // filet de sécurité anti-zoom iOS
 document.addEventListener('click', e => {
   if (e.target.closest('[data-lancer-demo]')) ctx.lancerDemo();
   if (e.target.closest('[data-quitter-demo]')) ctx.quitterDemo();
