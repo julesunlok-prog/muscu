@@ -86,7 +86,7 @@ function ecranDonneesIllisibles() {
 
 function afficher() {
   if (lectureEchouee) return ecranDonneesIllisibles();
-  vue.onclick = vue.onchange = null;
+  vue.onclick = vue.onchange = vue.onpointerdown = vue.onpointermove = vue.onpointerup = vue.onpointercancel = null;
   let { nom, params } = route();
   if (nom === 'seance' && !state.enCours) { nom = 'programmes'; history.replaceState(null, '', '#/programmes'); }
   const y = window.scrollY, meme = vue.dataset.vue === nom + (params.id ?? '');

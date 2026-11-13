@@ -72,7 +72,10 @@ export function ajouterSerie(w, ei) {
 }
 
 export function supprimerSerie(w, ei, si) {
-  return { ...w, entrees: w.entrees.map((e, i) => i !== ei ? e : { ...e, series: e.series.filter((_, j) => j !== si) }) };
+  // La barre de repos suit sa série : elle disparaît avec elle, ou remonte d'un cran si une série au-dessus est supprimée.
+  const r = w.repos, ancre = r && r.ei === ei && r.si != null;
+  const repos = !ancre || r.si < si ? r : r.si === si ? { ...r, ei: null, si: null } : { ...r, si: r.si - 1 };
+  return { ...w, repos, entrees: w.entrees.map((e, i) => i !== ei ? e : { ...e, series: e.series.filter((_, j) => j !== si) }) };
 }
 
 export function ajouterExercice(w, state, exerciseId) {

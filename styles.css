@@ -206,6 +206,11 @@ button:disabled > .tic { display: none; }
 .repos-grand { font-size: 56px; font-weight: 700; text-align: center; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin: 4px 0 16px; color: var(--title); }
 .repos-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
+/* Glisser une série vers la gauche : le fond rouge et la corbeille apparaissent derrière les cellules. */
+.series tr[data-serie] { touch-action: pan-y; }
+.series tr.glisse { background: var(--neg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'/%3E%3C/svg%3E") no-repeat right 16px center / 22px; }
+.series tr.glisse:not(.faite) td { background: var(--surface); }
+
 /* Série cochée : la ligne passe au vert, la coche rebondit. */
 .series tr.vient td { animation: vert .45s var(--out); }
 .series tr.vient .coche { animation: rebond .4s var(--out); }
@@ -235,7 +240,7 @@ button:disabled > .tic { display: none; }
 .bravo-table td { padding: 5px 0; border-top: 1px solid var(--rule); vertical-align: top; }
 .bravo-table td:last-child, .bravo-table th:last-child { text-align: right; white-space: nowrap; padding-left: 8px; }
 .bravo-ok { max-width: 480px; margin: 0 auto; }
-.exo { padding: 16px 14px; }
+.exo { padding: 16px 14px; overflow: hidden; } /* une série glissée ne déborde pas de la carte */
 .exo-nom { font-size: 17px; font-weight: 600; color: var(--title); margin: 0; letter-spacing: -.02em; }
 .exo-groupe { font-size: 12px; font-weight: 600; color: var(--accent-ink); }
 .exo .conseil { font-size: 14px; padding: 10px 12px; margin: 10px 0 12px; }

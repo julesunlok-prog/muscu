@@ -8,7 +8,7 @@ import { conseil, sessionsDe, e1rm } from '../moteur.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
   champDuree, lireDuree, valeurDuree } from '../ui.js';
 
-let horloge = null, vientDeCocher = null;
+let horloge = null, vientDeCocher = null, geste = null, sansClicJusqua = 0;
 const fmtEcoule = s => s < 3600 ? fmtChrono(s) : `${Math.floor(s / 3600)}:${fmtChrono(s % 3600).padStart(5, '0')}`;
 
 export function render(el, ctx) {
@@ -39,6 +39,7 @@ export function render(el, ctx) {
   majChrono(); horloge = setInterval(majChrono, 1000);
 
   glisserPourReduire(el, ctx);
+  glisserPourSupprimer(el, ctx);
 
   // Saisie : on sauvegarde à chaque frappe sans réafficher, pour garder le clavier ouvert.
   // Le trait de repos cache un champ « heure » (roulette iOS) : on ne réaffiche pas non plus, sinon la roulette se fermerait.
@@ -59,7 +60,7 @@ export function render(el, ctx) {
 
   el.onclick = async e => {
     const b = e.target.closest('[data-act]');
-    if (!b) return;
+    if (!b || Date.now() < sansClicJusqua) return; // pas de clic à la fin d'un glisser
     const ei = +b.dataset.ei, si = +b.dataset.si, act = b.dataset.act;
     const majSeance = fn => ctx.maj(s => ({ ...s, enCours: fn(s.enCours, s) }));
     if (act === 'coche') {
@@ -83,6 +84,50 @@ export function render(el, ctx) {
       ctx.aller('#/programmes');
     }
   };
+}
+
+// Glisser une série vers la gauche : fond rouge avec corbeille ; au-delà de 40 % de la largeur, la série est supprimée.
+// Le sens se décide après 8 px : vertical, on laisse la page défiler ; horizontal, on suit le doigt.
+function glisserPourSupprimer(el, ctx) {
+  const cellules = (tr, x, anime) => tr.querySelectorAll('td').forEach(td => {
+    td.style.transition = anime ? 'transform .2s var(--out)' : ''; td.style.transform = x ? `translateX(${x}px)` : '';
+  });
+  el.onpointerdown = e => {
+    const tr = e.target.closest('tr[data-serie]');
+    geste = tr && e.button < 1 ? { tr, x0: e.clientX, y0: e.clientY, dx: 0, sens: null, id: e.pointerId } : null;
+  };
+  el.onpointermove = e => {
+    const g = geste;
+    if (!g || e.pointerId !== g.id) return;
+    const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
+    if (!g.sens) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      g.sens = dx < 0 && Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      if (g.sens === 'v') { geste = null; return; }
+      g.tr.classList.add('glisse');
+      document.activeElement?.blur?.();
+    }
+    g.dx = Math.min(0, dx);
+    cellules(g.tr, g.dx, false);
+  };
+  el.onpointerup = el.onpointercancel = e => {
+    const g = geste;
+    geste = null;
+    if (!g?.sens) return;
+    sansClicJusqua = Date.now() + 400;
+    const largeur = g.tr.offsetWidth;
+    if (e.type === 'pointerup' && g.dx < -largeur * 0.4) {
+      cellules(g.tr, -largeur, true);
+      const { ei, si } = g.tr.dataset;
+      return setTimeout(() => ctx.maj(s => ({ ...s, enCours: supprimerSerie(s.enCours, +ei, +si) })), 200);
+    }
+    cellules(g.tr, 0, true);
+    setTimeout(() => g.tr.classList.remove('glisse'), 200);
+  };
+  if (!el.dataset.glisseBranche) { // #vue est réutilisé à chaque affichage : un seul écouteur
+    el.dataset.glisseBranche = '1';
+    el.addEventListener('touchmove', e => { if (geste?.sens === 'h') e.preventDefault(); }, { passive: false }); // Safari ne fait pas défiler pendant le glisser
+  }
 }
 
 // Poignée : glisser l'en-tête vers le bas (ou toucher la poignée) réduit la séance ; elle continue, « Reprendre » la rouvre.
@@ -142,7 +187,7 @@ function carte(state, ex, e, ei) {
       const num = s.echauffement ? 'É' : ++n;
       const champ = (nom, mode) => `<input data-champ="${nom}" data-ei="${ei}" data-si="${si}" inputmode="${mode}" enterkeyhint="done" autocomplete="off"
         value="${s[nom] == null ? '' : fmtKg(s[nom])}" placeholder="${nom === 'rir' ? '–' : ''}" aria-label="${nom === 'kg' ? 'Charge' : nom === 'reps' ? 'Répétitions' : 'RIR'} série ${si + 1}">`;
-      return `<tr class="${s.faite ? 'faite' : ''} ${s.faite && vientDeCocher === `${ei}-${si}` ? 'vient' : ''}">
+      return `<tr data-serie data-ei="${ei}" data-si="${si}" class="${s.faite ? 'faite' : ''} ${s.faite && vientDeCocher === `${ei}-${si}` ? 'vient' : ''}">
         <td class="n ${s.echauffement ? 'echauf' : ''}"><button data-act="serie" data-ei="${ei}" data-si="${si}" aria-label="Options de la série ${si + 1}">${num}</button></td>
         <td class="prec">${esc(precedent(state, ex.id, si) ?? '—')}</td>
         <td>${champ('kg', 'decimal')}</td><td>${champ('reps', 'numeric')}</td>${e.afficherRir ? `<td>${champ('rir', 'numeric')}</td>` : ''}
