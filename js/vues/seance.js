@@ -2,7 +2,7 @@
 import { cocher, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance } from '../seance.js';
 import { conseil, sessionsDe } from '../moteur.js';
-import { esc, icon, fmtKg, fmtNum, fmtDuree, ouvrirFeuille, fermerFeuille, confirmer, toast } from '../ui.js';
+import { esc, icon, fmtKg, fmtNum, fmtDuree, ouvrirFeuille, fermerFeuille, confirmer, toast, roueDuree, lireRoue, brancherRoues } from '../ui.js';
 
 let horloge = null;
 
@@ -95,14 +95,17 @@ function menuSerie(ctx, ei, si) {
 
 function menuExercice(ctx, ei) {
   const e = ctx.state.enCours.entrees[ei];
+  const repos = ctx.state.exercises.find(x => x.id === e.exerciseId)?.reposSec ?? 90;
   const f = ouvrirFeuille({ titre: e.nomExercice, corps: `
     <div class="form-group"><label for="note-ex">Note</label><input id="note-ex" class="form-control" value="${esc(e.note)}" maxlength="120" placeholder="Réglage du siège, prise…"></div>
+    <div class="form-group"><div class="label" id="repos-ex-titre">Repos entre les séries</div>${roueDuree('repos-ex', repos)}</div>
     <label class="case"><input type="checkbox" id="rir-ex" ${e.afficherRir ? 'checked' : ''}> Afficher la colonne RIR (reps en réserve)</label>
     <div style="display:flex;gap:8px;margin:12px 0">
       <button class="btn btn-secondary" style="flex:1" data-m="haut">${icon('haut')}Monter</button>
       <button class="btn btn-secondary" style="flex:1" data-m="bas">${icon('bas')}Descendre</button></div>
     <button class="btn btn-danger btn-bloc" data-m="retirer">Retirer de la séance</button>`,
     pied: '<button class="btn btn-primary" data-m="ok">Enregistrer</button>' });
+  brancherRoues(f);
   f.addEventListener('click', ev => {
     const m = ev.target.closest('[data-m]')?.dataset.m;
     if (!m) return;
@@ -111,7 +114,9 @@ function menuExercice(ctx, ei) {
       if (m === 'ok') w = { ...w, entrees: w.entrees.map((x, i) => i !== ei ? x : { ...x, note: f.querySelector('#note-ex').value.trim(), afficherRir: f.querySelector('#rir-ex').checked }) };
       if (m === 'haut' || m === 'bas') w = deplacerExercice(w, ei, m === 'haut' ? -1 : 1);
       if (m === 'retirer') w = supprimerExerciceSeance(w, ei);
-      return { ...st, enCours: w };
+      // Le repos est réglé sur l'exercice lui-même : il vaut pour les séances suivantes aussi.
+      const exercises = m !== 'ok' ? st.exercises : st.exercises.map(x => x.id === e.exerciseId ? { ...x, reposSec: lireRoue(f.querySelector('#repos-ex')) } : x);
+      return { ...st, exercises, enCours: w };
     });
     fermerFeuille(f);
   });

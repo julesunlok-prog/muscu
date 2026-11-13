@@ -90,6 +90,35 @@ export function fermerFeuille(f) {
   setTimeout(() => { f.remove(); f._voile.remove(); }, 160);
 }
 
+// Roulette de durée façon minuteur iPhone : colonnes minutes / secondes à défilement aimanté.
+const MINUTES = [...Array(16).keys()], SECONDES = [...Array(12).keys()].map(i => i * 5);
+const colonne = (nom, valeurs, unite) => `<div class="roue" tabindex="0" role="spinbutton" aria-label="${nom}" aria-valuemin="${valeurs[0]}" aria-valuemax="${valeurs.at(-1)}">
+  ${valeurs.map(v => `<div>${v}</div>`).join('')}</div><span class="roue-unite" aria-hidden="true">${unite}</span>`;
+export const roueDuree = (id, sec) => `<div class="roues" id="${id}" role="group" aria-labelledby="${id}-titre" data-sec="${sec}">${colonne('Minutes', MINUTES, 'min')}${colonne('Secondes', SECONDES, 's')}</div>`;
+
+const pas = r => r.firstElementChild.offsetHeight;
+const indice = r => Math.min(r.children.length - 1, Math.max(0, Math.round(r.scrollTop / pas(r))));
+const aria = r => r.setAttribute('aria-valuenow', r.children[indice(r)].textContent);
+export const lireRoue = el => { const [m, s] = el.querySelectorAll('.roue'); return MINUTES[indice(m)] * 60 + SECONDES[indice(s)]; };
+export function reglerRoue(el, sec) {
+  sec = Math.min(MINUTES.at(-1) * 60 + 55, Math.round(sec / 5) * 5);
+  const [m, s] = el.querySelectorAll('.roue');
+  m.scrollTop = Math.floor(sec / 60) * pas(m); s.scrollTop = (sec % 60) / 5 * pas(s);
+  aria(m); aria(s);
+}
+// À appeler une fois la roulette dans la page (il faut sa hauteur pour la positionner).
+export function brancherRoues(racine) {
+  racine.querySelectorAll('.roues').forEach(el => {
+    el.querySelectorAll('.roue').forEach(r => {
+      const aller = i => r.scrollTo({ top: i * pas(r), behavior: 'smooth' });
+      r.onscroll = () => aria(r);
+      r.onclick = e => { const i = [...r.children].indexOf(e.target); if (i >= 0) aller(i); };
+      r.onkeydown = e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); aller(indice(r) + d); } };
+    });
+    reglerRoue(el, +el.dataset.sec);
+  });
+}
+
 export function champErreur(input, message) {
   input.classList.remove('shake'); void input.offsetWidth; input.classList.add('shake');
   input.setAttribute('aria-invalid', 'true');

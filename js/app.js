@@ -105,27 +105,35 @@ function afficher() {
 
 // ---------- Minuteur de repos ----------
 const barre = document.getElementById('minuteur');
-let audio = null, dejaSonne = null;
-document.addEventListener('pointerdown', () => {
-  // iOS n'autorise le son qu'après un geste : on prépare le contexte audio au premier toucher.
-  try { audio ??= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch { /* pas de son */ }
-}, { passive: true });
+let audio = null, dejaSonne = null, dejaDemarre = null;
+// Sons courts qui baissent la musique au lieu de la couper (Safari 17+ ; ignoré ailleurs).
+try { if (navigator.audioSession) navigator.audioSession.type = 'transient'; } catch { /* non pris en charge */ }
+const preparerSon = () => {
+  // iOS n'autorise le son qu'après un geste : on prépare le contexte audio au toucher.
+  try { audio ??= new (window.AudioContext || window.webkitAudioContext)(); if (audio.state !== 'running') audio.resume(); } catch { /* pas de son */ }
+};
+['pointerdown', 'touchend'].forEach(t => document.addEventListener(t, preparerSon, { passive: true }));
 
-function bip() {
+// notes : [décalage en s, fréquence en Hz]
+function bip(notes) {
   if (!audio || document.visibilityState !== 'visible') return;
-  [0, 0.25].forEach(t => {
+  notes.forEach(([t, f]) => {
     const o = audio.createOscillator(), g = audio.createGain();
-    o.frequency.value = 880; g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.18);
+    o.frequency.value = f; g.gain.setValueAtTime(0.25, audio.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + t + 0.18);
     o.connect(g).connect(audio.destination); o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.2);
   });
 }
+const SON_DEBUT = [[0, 660], [0.12, 990]], SON_FIN = [[0, 880], [0.25, 880], [0.5, 1320]];
 
 function majMinuteur() {
   const w = state.enCours;
   if (!w?.repos) { barre.classList.add('hidden'); return; }
   const reste = resteRepos(w);
+  // fin − durée ne bouge pas avec ±15 s : c'est l'instant de départ du repos.
+  const debut = w.repos.fin - w.repos.duree * 1000;
+  if (dejaDemarre !== debut) { dejaDemarre = debut; if (Date.now() - debut < 2000) bip(SON_DEBUT); } // pas de son en rouvrant l'app en plein repos
   if (reste <= 0) {
-    if (dejaSonne !== w.repos.fin) { dejaSonne = w.repos.fin; bip(); navigator.vibrate?.(200); }
+    if (dejaSonne !== w.repos.fin) { dejaSonne = w.repos.fin; bip(SON_FIN); navigator.vibrate?.(200); }
     barre.classList.add('hidden');
     ctx.maj(s => ({ ...s, enCours: passerRepos(s.enCours) }), { rendre: false });
     document.getElementById('reprise').classList.toggle('hidden', route().nom === 'seance');

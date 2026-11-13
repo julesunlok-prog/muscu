@@ -30,7 +30,7 @@ export function render(el, ctx) {
     ${volume(state, ordre, cibles, prio)}
     ${carte('Volume par semaine', `${puces}${barres(volumeParSemaine(state, muscleChoisi, now, 12), { cible: cibles[muscleChoisi], titre: 'Séries par semaine' })}
       <div class="legende"><span>Séries de ${esc(NOM_MUSCLE[muscleChoisi])} par semaine, 12 semaines</span><span><i class="pred" style="border-color:var(--muted)"></i>Cible : ${cibles[muscleChoisi]}</span></div>`)}
-    ${force(state, now, ordre)}
+    ${force(state, now, ordre, puces)}
     ${predictions(state)}
     ${stagnations(state)}
     ${frise(state, now)}
@@ -92,7 +92,7 @@ function volume(state, ordre, cibles, prio) {
     ${liensSources(['S4', 'S5'])}`);
 }
 
-function force(state, now, ordre) {
+function force(state, now, ordre, puces) {
   const p = progressionMuscles(state, now);
   const lignes = ordre.filter(m => p[m] != null);
   const max = Math.max(5, ...lignes.map(m => Math.abs(p[m])));
@@ -104,13 +104,14 @@ function force(state, now, ordre) {
         <span class="num ${p[m] < 0 ? '' : 'muted'}">${signe(p[m])} %</span>`;
     }).join('')}</div>` : vide('Il faut au moins 2 séances d’un exercice sur les 8 dernières semaines.')}
     <h3 class="label" style="margin:18px 0 8px">Exercices de ${esc(NOM_MUSCLE[muscleChoisi])} (base 100)</h3>
+    ${puces}
     ${ex.length ? `${courbes(ex, { reference: 100, titre: `Progression des exercices de ${NOM_MUSCLE[muscleChoisi]}` })}${legende(ex)}`
       : vide('Pas assez de séances pour ce muscle sur 8 semaines.')}
     <details class="explication"><summary>Comment lire la base 100 ?</summary>
       <p>Pour chaque séance, l’app calcule un indice de force sur ta meilleure série : charge × (1 + reps ÷ 30). Exemple : 30 kg × 8 → 38.</p>
       <p>La première séance des 8 dernières semaines vaut <b>100</b>, les suivantes sont comparées à elle : 32 kg × 8 → 40,5, soit 40,5 ÷ 38 × 100 = <b>106,6</b>, donc <b>+6,6 %</b>.</p>
       <p>Ça permet de mettre sur le même graphique un développé à 30 kg et un pec deck à 45 kg : au-dessus de 100 l’exercice progresse, à 100 il stagne, en dessous tu as perdu de la force.</p>
-      <p>Le pourcentage d’un muscle, en haut, est la moyenne de ses exercices. C’est une tendance, pas ta vraie charge maximale. Le muscle se choisit dans la carte « Volume par semaine ».</p></details>`,
+      <p>Le pourcentage d’un muscle, en haut, est la moyenne de ses exercices. C’est une tendance, pas ta vraie charge maximale.</p></details>`,
     '<span class="faint">8 semaines</span>');
 }
 
@@ -125,7 +126,7 @@ function predictions(state) {
         ? `1RM estimé ${fmtNum(p.maintenant)} kg → ${fmtNum(p.s4)} kg (± ${fmtNum(p.m4)}) dans 4 semaines`
         : `${fmtNum(p.s4, 0)} reps (± ${fmtNum(p.m4, 0)}) à ${fmtKg(p.kg)} kg dans 4 semaines`}
         ${v ? `<br>Vérification : prévu ${fmtNum(v.prevu)} kg il y a ${Math.round(v.jours / 7)} sem., réel ${fmtNum(v.reel)} kg ${v.dansFourchette ? '<span class="badge pos">dans la fourchette</span>' : '<span class="badge warn">hors fourchette</span>'}` : ''}</div></div>
-      <span class="badge ${p.parSemaine > 0 ? 'pos' : ''}" style="flex:none">${signe(p.parSemaine)}/sem.</span></a></li>`).join('')}</ul>`
+      <span style="flex:none;display:flex;align-items:center;gap:4px"><span class="badge ${p.parSemaine > 0 ? 'pos' : ''}">${signe(p.parSemaine)}/sem.</span>${icon('chevron', 'icone chevron')}</span></a></li>`).join('')}</ul>`
       : vide('Il faut au moins 4 séances d’un exercice sur 8 semaines.')}
     ${explicationPrediction()}`);
 }
