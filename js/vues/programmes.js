@@ -1,7 +1,7 @@
 // Écran Entraînement : programmes, « Débuter », séance vide, édition d'un programme.
 import { demarrer } from '../seance.js';
 import { NOM_MUSCLE } from '../profils.js';
-import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur, tic, TIC } from '../ui.js';
+import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
 
@@ -34,7 +34,7 @@ export function render(el, ctx) {
           <div class="faint">${suivant ? '<b class="suivant">Prochaine séance</b> · ' : ''}${d ? `Dernière : ${fmtDate(d)}` : 'Jamais fait'}</div></div>
           <button class="btn btn-texte btn-sm btn-icone" data-act="editer" data-id="${esc(t.id)}" aria-label="Modifier ${esc(t.nom)}">${icon('plusieurs')}</button></div>
         <p style="font-size:15px;margin:0 0 14px">${esc(r.muscles || 'Aucun exercice')}<span class="faint" style="display:block;margin-top:2px">${r.detail}</span></p>
-        <button class="btn ${suivant ? 'btn-primary' : 'btn-secondary'} btn-bloc" data-act="debuter" data-id="${esc(t.id)}">Débuter${TIC}</button>
+        <button class="btn ${suivant ? 'btn-primary' : 'btn-secondary'} btn-bloc" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
       </section>`;
     }).join('') : `<div class="empty-state"><div class="empty-title">Aucun programme</div><div class="empty-sub">Crée ton premier programme pour débuter une séance.</div></div>`}
     <button class="btn btn-texte btn-bloc" data-act="vide">Séance vide</button>`;
@@ -45,7 +45,6 @@ export function render(el, ctx) {
     const { act, id } = b.dataset;
     if (act === 'reprendre') return ctx.aller('#/seance');
     if (act === 'debuter' || act === 'vide') {
-      tic();
       if (state.enCours && !await confirmer(`« ${state.enCours.nom} » est déjà en cours. La remplacer par une nouvelle séance ? Ce qui n’a pas été terminé sera perdu.`, { titre: 'Remplacer la séance en cours ?', ok: 'Remplacer', danger: true })) return;
       ctx.maj(s => ({ ...s, enCours: demarrer(s, act === 'vide' ? null : id, new Date()) }), { rendre: false });
       return ctx.aller('#/seance');

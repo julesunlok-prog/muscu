@@ -2,7 +2,7 @@
 import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CLE } from './store.js';
 import { resteRepos, ajusterRepos, passerRepos } from './seance.js';
 import { genererDemo } from './demo.js';
-import { icon, toast, fmtChrono, esc, confirmer, telecharger } from './ui.js';
+import { icon, toast, fmtChrono, esc, confirmer, telecharger, ticPartout } from './ui.js';
 import * as programmes from './vues/programmes.js';
 import * as seance from './vues/seance.js';
 import * as historique from './vues/historique.js';
@@ -162,6 +162,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('[data-lancer-demo]')) ctx.lancerDemo();
   if (e.target.closest('[data-quitter-demo]')) ctx.quitterDemo();
 });
+ticPartout();
 appliquerTheme();
 afficher();
 majMinuteur();

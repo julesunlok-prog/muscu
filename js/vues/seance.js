@@ -2,7 +2,7 @@
 import { cocher, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance } from '../seance.js';
 import { conseil, sessionsDe } from '../moteur.js';
-import { esc, icon, fmtKg, fmtNum, fmtDuree, ouvrirFeuille, fermerFeuille, confirmer, toast, champDuree, lireDuree, TIC, tic } from '../ui.js';
+import { esc, icon, fmtKg, fmtNum, fmtDuree, ouvrirFeuille, fermerFeuille, confirmer, toast, champDuree, lireDuree } from '../ui.js';
 
 let horloge = null;
 
@@ -35,7 +35,6 @@ export function render(el, ctx) {
     const ei = +b.dataset.ei, si = +b.dataset.si, act = b.dataset.act;
     const majSeance = fn => ctx.maj(s => ({ ...s, enCours: fn(s.enCours, s) }));
     if (act === 'coche') {
-      tic();
       const avant = ctx.state.enCours.entrees[ei].series[si];
       majSeance((w, s) => cocher(w, ei, si, s, new Date()));
       if (!avant.faite && !ctx.state.enCours.entrees[ei].series[si].faite) {
@@ -75,7 +74,7 @@ function carte(state, ex, e, ei) {
         <td class="n ${s.echauffement ? 'echauf' : ''}"><button data-act="serie" data-ei="${ei}" data-si="${si}" aria-label="Options de la série ${si + 1}">${num}</button></td>
         <td class="prec">${esc(precedent(state, ex.id, si) ?? '—')}</td>
         <td>${champ('kg', 'decimal')}</td><td>${champ('reps', 'numeric')}</td>${e.afficherRir ? `<td>${champ('rir', 'numeric')}</td>` : ''}
-        <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}${TIC}</button></td></tr>`;
+        <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>`;
     }).join('')}</tbody></table>
     <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}">+ Série</button></div>
   </section>`;

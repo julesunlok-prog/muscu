@@ -145,11 +145,15 @@ a { color: var(--accent-ink); }
 label, .label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
 .form-control { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--control); border-radius: var(--r-md); background: var(--surface);
   font-size: 16px; transition: border-color .15s, box-shadow .15s; }
+/* Champ heure sur iPhone : sans ça il garde sa largeur native et déborde de la carte. */
+input[type="time"].form-control { -webkit-appearance: none; appearance: none; min-width: 0; display: block; text-align: left; }
+input[type="time"].form-control::-webkit-date-and-time-value { text-align: left; }
 .form-control:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 textarea.form-control { height: auto; min-height: 80px; padding: 8px 11px; resize: vertical; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 /* Interrupteur transparent posé sur un bouton : donne le « tic » haptique de l'iPhone au toucher. */
-:has(> .tic) { position: relative; }
+:where(:has(> .tic)) { position: relative; } /* :where = priorité nulle : un bouton déjà positionné le reste */
+button:disabled > .tic { display: none; }
 .tic { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 
 .err-msg { font-size: 12.5px; color: var(--neg-ink); margin-top: 4px; }

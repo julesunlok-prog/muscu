@@ -95,11 +95,17 @@ export function fermerFeuille(f) {
   }, 160);
 }
 
-// Retour haptique. Android : vibration courte via tic().
+// Retour haptique sur tous les boutons.
 // iPhone (testé iOS 26.5) : seul un vrai toucher sur un interrupteur natif fait un « tic » ; le déclencher par code ne marche pas.
-// On pose donc TIC, un interrupteur transparent, par-dessus le bouton : le toucher l'actionne et le clic remonte au bouton.
-export const tic = () => { try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } };
-export const TIC = '<input type="checkbox" switch class="tic" tabindex="-1" aria-hidden="true">';
+// On pose donc un interrupteur transparent dans chaque <button> : le toucher l'actionne et le clic remonte au bouton.
+// Les liens <a> sont exclus : l'interrupteur y bloquerait la navigation. Android : vibration courte.
+const TIC = '<input type="checkbox" switch class="tic" tabindex="-1" aria-hidden="true">';
+export function ticPartout() {
+  const poser = () => document.querySelectorAll('button:not(:has(> .tic))').forEach(b => b.insertAdjacentHTML('beforeend', TIC));
+  poser();
+  new MutationObserver(poser).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('change', e => { if (e.target.classList?.contains('tic')) try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } });
+}
 
 // Durée de repos : champ « heure » détourné (mm:ss affiché comme hh:mm), seul moyen d'ouvrir la vraie roulette iOS à deux colonnes.
 // shortcut: limité à 23 min 59 s, et un iPhone réglé en 12 h afficherait AM/PM ; repasser à une roulette maison si ça gêne.
