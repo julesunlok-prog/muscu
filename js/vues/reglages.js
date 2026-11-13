@@ -42,7 +42,10 @@ export function render(el, ctx) {
       <h2 class="card-title" style="margin-bottom:8px">Sources des conseils</h2>
       <ul class="liste">${Object.entries(SOURCES).map(([k, s]) =>
         `<li><a class="liste-ligne" href="${esc(s.url)}" target="_blank" rel="noopener"><span><b>${k}</b> · ${esc(s.titre)}</span></a></li>`).join('')}</ul>
-    </section>`;
+    </section>
+    <p class="faint" style="text-align:center" data-version></p>`;
+  // La version est le nom du cache du service worker (VERSION dans sw.js).
+  window.caches?.keys().then(k => { const v = k.find(x => x.startsWith('muscu-')); const p = el.querySelector('[data-version]'); if (v && p) p.textContent = `Version ${v.replace('muscu-', '')}`; }).catch(() => {});
 
   el.onclick = e => {
     const t = e.target.closest('[data-theme]')?.dataset.theme;

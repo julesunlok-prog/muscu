@@ -1,5 +1,5 @@
 // Hors ligne : tout le code de l'app est pré-caché ; les polices Google sont mises en cache au premier chargement.
-const VERSION = 'muscu-v10';
+const VERSION = 'muscu-v11';
 const FICHIERS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icones/icone-192.png', 'icones/icone-512.png', 'icones/apple-touch-icon.png',
@@ -9,7 +9,8 @@ const FICHIERS = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
+  // cache: 'reload' : GitHub Pages garde les fichiers 10 min en cache HTTP ; sans ça, une nouvelle version peut embarquer d'anciens fichiers.
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FICHIERS.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

@@ -166,5 +166,9 @@ appliquerTheme();
 afficher();
 majMinuteur();
 demanderPersistance();
-if ('serviceWorker' in navigator && location.protocol.startsWith('http'))
-  navigator.serviceWorker.register('sw.js').catch(() => { /* hors ligne indisponible, l'app marche quand même */ });
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // Nouvelle version installée : on recharge une fois pour l'utiliser (l'état est déjà enregistré à chaque saisie).
+  const avaitUneVersion = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (avaitUneVersion) location.reload(); });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => { /* hors ligne indisponible, l'app marche quand même */ });
+}
