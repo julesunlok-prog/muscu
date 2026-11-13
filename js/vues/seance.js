@@ -126,7 +126,7 @@ function glisserPourSupprimer(el, ctx) {
   };
   if (!el.dataset.glisseBranche) { // #vue est réutilisé à chaque affichage : un seul écouteur
     el.dataset.glisseBranche = '1';
-    el.addEventListener('touchmove', e => { if (geste?.sens === 'h') e.preventDefault(); }, { passive: false }); // Safari ne fait pas défiler pendant le glisser
+    el.addEventListener('touchmove', e => { if (geste?.sens === 'h' && geste.tr.isConnected) e.preventDefault(); }, { passive: false }); // Safari ne fait pas défiler pendant le glisser
   }
 }
 

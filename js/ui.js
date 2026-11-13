@@ -103,10 +103,11 @@ export function fermerFeuille(f) {
 // Retour haptique sur tous les boutons.
 // iPhone (testé iOS 26.5) : seul un vrai toucher sur un interrupteur natif fait un « tic » ; le déclencher par code ne marche pas.
 // On pose donc un interrupteur transparent dans chaque <button> : le toucher l'actionne et le clic remonte au bouton.
-// Les liens <a> sont exclus : l'interrupteur y bloquerait la navigation. Android : vibration courte.
+// Exclus : les liens <a> (l'interrupteur y bloquerait la navigation) et les boutons d'une rangée qui défile
+// horizontalement (.puces) : un interrupteur iOS capte le glisser horizontal et la rangée ne défilerait plus. Android : vibration courte.
 const TIC = '<input type="checkbox" switch class="tic" tabindex="-1" aria-hidden="true">';
 export function ticPartout() {
-  const poser = () => document.querySelectorAll('button:not(:has(> .tic))').forEach(b => b.insertAdjacentHTML('beforeend', TIC));
+  const poser = () => document.querySelectorAll('button:not(:has(> .tic)):not(.puces *)').forEach(b => b.insertAdjacentHTML('beforeend', TIC));
   poser();
   new MutationObserver(poser).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('change', e => { if (e.target.classList?.contains('tic')) try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } });

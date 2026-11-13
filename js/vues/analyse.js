@@ -45,7 +45,7 @@ export function render(el, ctx) {
     if (!b) return;
     if (b.dataset.mode) mode = b.dataset.mode;
     if (b.dataset.muscle) muscleChoisi = b.dataset.muscle;
-    const y = window.scrollY; render(el, ctx); window.scrollTo(0, y);
+    ctx.rendre(); // réaffiche via l'app : garde le défilement et le bandeau de la démo
   };
 }
 
