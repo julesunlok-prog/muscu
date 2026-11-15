@@ -50,6 +50,22 @@ export const EXERCICES_INITIAUX = [
   ex('presse-inclinee', 'Presse inclinée pectoraux (machine)', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
     'Version guidée du développé incliné : le haut des pectoraux grossit davantage en incliné qu’à plat (étude chez des débutants). Machines et poids libres font grossir le muscle autant : choisis selon ton confort. Fait doublon avec le développé incliné Smith : garde l’un des deux ou alterne-les.',
     ['S31', 'S30', 'S11'], { catalogue: 2 }),
+  // Catalogue 3 (2026-11-15) : exercices pectoraux demandés par Jules.
+  ex('multiflight-pecs', 'Multiflight Technogym (pectoraux)', 'poulie', 'iso', 'pectoraux', ['delt_ant'],
+    'Poulies réglables en mode pectoraux (écarté) : isolation des pectoraux, comme le pec deck, avec la charge réglée à la pile. Machines, poulies et poids libres font grossir le muscle autant : choisis selon ton confort.',
+    ['S30'], { catalogue: 3 }),
+  ex('dips', 'Dips (lestés ou poids du corps)', 'poids_du_corps', 'poly_haut', 'pectoraux', ['triceps', 'delt_ant'],
+    'Saisis le lest ajouté : 0 kg = poids du corps. Conseil de technique : buste penché en avant pour viser les pectoraux, descente contrôlée sans forcer l’avant de l’épaule. Progresse d’abord en reps au poids du corps, puis ajoute du lest.',
+    [], { catalogue: 3 }),
+  ex('chest-press-hammer-incline', 'Chest press Hammer Strength incliné (assis)', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
+    'Développé incliné guidé, assis : le haut des pectoraux grossit davantage en incliné qu’à plat (étude chez des débutants). Machines et poids libres font grossir le muscle autant. Fait doublon avec la presse inclinée et le développé incliné Smith : garde-en un ou alterne-les.',
+    ['S31', 'S30'], { catalogue: 3 }),
+  ex('ecarte-halteres', 'Écarté haltères (banc)', 'halteres', 'iso', 'pectoraux', ['delt_ant'],
+    'Isolation des pectoraux, couché sur un banc. Conseil de technique : coudes légèrement fléchis, descends lentement jusqu’à sentir l’étirement sans forcer l’épaule. Charges bien plus légères qu’au développé : progresse surtout en reps.',
+    [], { catalogue: 3 }),
+  ex('chest-press-debout', 'Chest press debout (poulie)', 'poulie', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
+    'Développé debout à la poulie. Debout, l’équilibre limite la charge : utile en variante ou en fin de séance plutôt qu’à la place d’un développé lourd. Machines, poulies et poids libres font grossir le muscle autant à effort égal.',
+    ['S30'], { catalogue: 3 }),
 ];
 export const CATALOGUE = Math.max(...EXERCICES_INITIAUX.map(e => e.catalogue ?? 1));
 

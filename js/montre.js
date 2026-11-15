@@ -16,7 +16,7 @@ export function avecIds(w) {
 // Noms courts pour l'écran rond de la montre (« Dév. inc. Smith ») ; l'app garde les noms complets.
 const ABREVIATIONS = [[/Développé/g, 'Dév.'], [/inclinée?/g, 'inc.'], [/Extension/g, 'Ext.'], [/Élévations/g, 'Élév.'],
   [/latérales/g, 'lat.'], [/haltères/g, 'halt.'], [/Soulevé de terre roumain/g, 'SDT roumain'],
-  [/ au-dessus de la tête/g, ' nuque'], [/ à la poulie haute/g, ' poulie haute'], [/ iso-latéral/g, ' iso']];
+  [/ au-dessus de la tête/g, ' nuque'], [/Hammer Strength/g, 'Hammer'], [/ à la poulie haute/g, ' poulie haute'], [/ iso-latéral/g, ' iso']];
 export function abreger(nom) {
   const court = ABREVIATIONS.reduce((n, [motif, abr]) => n.replace(motif, abr), nom);
   return court.length > 20 ? court.replace(/\s*\([^)]*\)/g, '') : court; // précision entre parenthèses retirée si trop long
