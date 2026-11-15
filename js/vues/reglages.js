@@ -4,6 +4,7 @@ import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts } fro
 import { ciblesVolume } from '../moteur.js';
 import { lireNombre } from '../seance.js';
 import { activer, tester, desactiver, etat } from '../alarme.js';
+import { activerMontre, desactiverMontre, etatMontre, cleMontre } from '../montre.js';
 import { MUSCLES, NOM_MUSCLE } from '../profils.js';
 import { SOURCES } from '../seed.js';
 import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger } from '../ui.js';
@@ -20,6 +21,8 @@ export function render(el, ctx) {
     </section>
 
     ${carteAlarme()}
+
+    ${ctx.demo ? '' : carteMontre()}
 
     ${ctx.demo ? '' : `<section class="card">
       <h2 class="card-title" style="margin-bottom:6px">Démo</h2>
@@ -69,6 +72,13 @@ export function render(el, ctx) {
     });
     if (a === 'tester') tester().then(ok => toast(ok ? 'Notification dans 10 s : verrouille l’iPhone pour essayer.' : 'Pas de réponse du serveur : vérifie le réseau.', ok ? 'info' : 'error'));
     if (a === 'desactiver') desactiver().then(() => { toast('Alarme désactivée.'); ctx.rendre(); });
+    const m = e.target.closest('button[data-montre]')?.dataset.montre;
+    if (m === 'activer') activerMontre(el.querySelector('#montre-code').value.trim()).then(r => {
+      toast(r === 'ok' ? 'Montre activée.' : MESSAGES_ALARME[r], r === 'ok' ? undefined : 'error');
+      if (r === 'ok') ctx.rendre();
+    });
+    if (m === 'copier') navigator.clipboard?.writeText(cleMontre()).then(() => toast('Clé copiée. Colle-la dans Garmin Connect → app Muscu → Réglages.'), () => toast('Copie impossible : sélectionne la clé à la main.', 'error'));
+    if (m === 'desactiver') desactiverMontre().then(() => { toast('Montre désactivée.'); ctx.rendre(); });
   };
   el.onchange = async e => {
     const i = e.target;
@@ -112,6 +122,23 @@ function carteAlarme() {
       <div class="form-group"><label for="alarme-code">Code</label>
         <input id="alarme-code" class="form-control" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
       <button class="btn btn-primary btn-bloc" data-alarme="activer">Activer</button>`}
+  </section>`;
+}
+
+// Montre Garmin (spec 2026-11-15-montre-garmin) : valider ses séries au poignet.
+function carteMontre() {
+  const on = etatMontre() === 'activee';
+  return `<section class="card">
+    <h2 class="card-title" style="margin-bottom:6px">Montre Garmin <span class="badge ${on ? 'pos' : ''}">${on ? 'Activée' : 'Désactivée'}</span></h2>
+    <p class="faint" style="margin:0 0 12px">Valide tes séries depuis une montre Garmin. La séance en cours passe par le serveur et y est effacée à la fin.</p>
+    ${on ? `<div class="form-group"><label for="montre-cle">Clé de la montre</label>
+        <input id="montre-cle" class="form-control" readonly value="${esc(cleMontre())}"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:1" data-montre="copier">Copier la clé</button>
+        <button class="btn btn-texte" style="flex:1" data-montre="desactiver">Désactiver</button></div>`
+      : `<div class="form-group"><label for="montre-code">Code</label>
+        <input id="montre-code" class="form-control" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <button class="btn btn-primary btn-bloc" data-montre="activer">Activer</button>`}
   </section>`;
 }
 

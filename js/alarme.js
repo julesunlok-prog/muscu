@@ -20,7 +20,8 @@ export function apres(precedent, demande, ok) {
 
 // Demande à envoyer pour ce repos, sachant le dernier envoi, ou null.
 export function besoin(repos, dernier, maintenant) {
-  const fin = repos && repos.pause == null && repos.fin > maintenant ? repos.fin : null;
+  // Un repos venu de la montre : elle vibre déjà, pas de notification en double.
+  const fin = repos && !repos.montre && repos.pause == null && repos.fin > maintenant ? repos.fin : null;
   if (fin) return dernier?.type === 'programmer' && dernier.fin === fin && dernier.ok ? null : { type: 'programmer', fin };
   // Plus d'alarme voulue : annuler celle qui est peut-être programmée, tant qu'elle n'est pas échue.
   return dernier?.armee > maintenant ? { type: 'annuler', fin: dernier.armee } : null;
@@ -33,7 +34,7 @@ export function etatPilule(dernier, maintenant) {
 }
 export const pilule = () => etatPilule(dernierEnvoi(), Date.now());
 
-function idAppareil() {
+export function idAppareil() {
   let id = lire(K.id);
   if (!id) { id = crypto.randomUUID(); ecrire(K.id, id); }
   return id;

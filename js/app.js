@@ -3,6 +3,7 @@ import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CL
 import { resteRepos, ajusterRepos, passerRepos } from './seance.js';
 import { genererDemo } from './demo.js';
 import { synchroniser, pilule } from './alarme.js';
+import { synchroniserMontre, montreEnAttente } from './montre.js';
 import { icon, toast, fmtChrono, esc, confirmer, telecharger, ticPartout, fermerFeuille } from './ui.js';
 import * as programmes from './vues/programmes.js';
 import * as seance from './vues/seance.js';
@@ -44,6 +45,7 @@ export const ctx = {
     if (rendre) afficher();
     majMinuteur();
     synchroniser(state, { demo: !!reel }); // alarme de repos côté serveur (sonne app fermée)
+    synchroniserMontre(ctx, { lire: false }); // montre Garmin : envoie la séance si elle a changé
   },
   remplacerEtat(s) { state = s; lectureEchouee = false; reel = null; enregistrer(); appliquerTheme(); afficher(); },
   get demo() { return !!reel; },
@@ -187,6 +189,10 @@ document.addEventListener('visibilitychange', majMinuteur);
 // Demande d'alarme ratée : réessayée au retour du réseau et au retour dans l'app.
 window.addEventListener('online', () => synchroniser(state, { demo: !!reel }));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') synchroniser(state, { demo: !!reel }); });
+// Montre Garmin : séries validées au poignet récupérées au retour dans l'app, puis toutes les 5 s tant qu'elle est à l'écran.
+window.addEventListener('online', () => synchroniserMontre(ctx));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') synchroniserMontre(ctx); });
+setInterval(() => { if (document.visibilityState === 'visible' && (state.enCours || montreEnAttente())) synchroniserMontre(ctx); }, 5000);
 
 // ---------- Coquille ----------
 document.getElementById('onglets').innerHTML = ONGLETS.map(([nom, ic, libelle]) =>

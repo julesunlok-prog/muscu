@@ -88,6 +88,54 @@ export function ajouterExercice(w, state, exerciseId) {
   return { ...w, entrees: [...w.entrees, entree(state, exerciseId, ex.series)] };
 }
 
+// Remplaçants d'un exercice, du plus proche au moins proche (spec montre §Remplacer) : même muscle principal
+// (même famille polyarticulaire / isolation d'abord), ce muscle en secondaire, ses muscles secondaires en principal,
+// puis même groupe de mouvement (pousser / tirer / jambes), puis le reste de la même moitié du corps.
+const famille = type => type.split('_')[0];
+const GROUPE = { pectoraux: 'pousser', delt_ant: 'pousser', delt_lat: 'pousser', triceps: 'pousser',
+  dos: 'tirer', delt_post: 'tirer', biceps: 'tirer', quadriceps: 'jambes', ischios: 'jambes', fessiers: 'jambes', mollets: 'jambes' };
+const moitie = m => GROUPE[m] === 'jambes' ? 'bas' : 'haut';
+export function alternatives(state, exerciseId, w) {
+  const a = exDe(state, exerciseId);
+  if (!a) return [];
+  const dans = new Set([exerciseId, ...w.entrees.map(e => e.exerciseId)]);
+  const rang = e => e.musclePrincipal === a.musclePrincipal ? (famille(e.type) === famille(a.type) ? 0 : 1)
+    : e.musclesSecondaires?.includes(a.musclePrincipal) ? 2
+    : a.musclesSecondaires?.includes(e.musclePrincipal) ? 3
+    : GROUPE[e.musclePrincipal] === GROUPE[a.musclePrincipal] ? (famille(e.type) === famille(a.type) ? 4 : 5)
+    : moitie(e.musclePrincipal) === moitie(a.musclePrincipal) ? 6 : null;
+  return state.exercises.filter(e => !e.archive && !dans.has(e.id) && rang(e) != null)
+    .sort((x, y) => rang(x) - rang(y) || x.nom.localeCompare(y.nom));
+}
+
+// Les séries faites restent sur A ; B reprend les séries restantes avec son propre conseil.
+// Superset entamé : B est ajouté seul après le bloc, pour garder l'alignement des tours.
+export function remplacerExercice(w, state, ei, nouvelId, sids = null) {
+  const a = w.entrees[ei], faites = a.series.filter(s => s.faite), reste = a.series.length - faites.length;
+  if (!reste) return w;
+  const b = entree(state, nouvelId, reste, a.supersetGroupe);
+  if (sids) b.series = b.series.map((s, i) => sids[i] ? { ...s, sid: sids[i] } : s);
+  const entrees = [...w.entrees];
+  if (!faites.length) { entrees[ei] = b; return { ...w, entrees }; }
+  entrees[ei] = { ...a, series: faites };
+  let j = ei;
+  if (a.supersetGroupe) { b.supersetGroupe = null; while (entrees[j + 1]?.supersetGroupe === a.supersetGroupe) j++; }
+  entrees.splice(j + 1, 0, b);
+  // La barre de repos suit sa série : décalée si elle est plus bas, ramenée sur la dernière série faite de A.
+  const r = w.repos;
+  const repos = !r || r.ei == null ? r : r.ei > j ? { ...r, ei: r.ei + 1 } : r.ei === ei ? { ...r, si: faites.length - 1 } : r;
+  return { ...w, entrees, repos };
+}
+
+// Saisies de la feuille Historique appliquées à la séance telle qu'elle est maintenant (les données de la montre
+// arrivées pendant que la feuille était ouverte sont gardées). Séries sans charge ni reps retirées ; null si plus rien.
+export function modifierSeanceHistorique(w, valeurs) {
+  const copie = structuredClone(w);
+  for (const { ei, si, champ, valeur } of valeurs) { const s = copie.entrees[ei]?.series[si]; if (s) s[champ] = valeur; }
+  copie.entrees = copie.entrees.map(e => ({ ...e, series: e.series.filter(s => s.kg != null && s.kg >= 0 && s.reps > 0) })).filter(e => e.series.length);
+  return copie.entrees.length ? copie : null;
+}
+
 export function supprimerExerciceSeance(w, ei) {
   return { ...w, entrees: w.entrees.filter((_, i) => i !== ei) };
 }

@@ -3,7 +3,8 @@
 // minuteur dans l'en-tête, poignée pour réduire la séance, écran « Bravo » à la fin.
 import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
-  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos } from '../seance.js';
+  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos, alternatives, remplacerExercice } from '../seance.js';
+import { recupererAvantFin, attendreFin, etatMontre } from '../montre.js';
 import { conseil, sessionsDe, e1rm } from '../moteur.js';
 import * as programmes from './programmes.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
@@ -91,6 +92,7 @@ export function render(el, ctx) {
     if (act === 'serie-plus') majSeance(w => ajouterSerie(w, ei));
     if (act === 'serie') menuSerie(ctx, eis, si);
     if (act === 'menu-ex') menuExercice(ctx, ei);
+    if (act === 'remplacer-ex') choisirRemplacant(ctx, ei);
     if (act === 'ajouter-ex') choisirExercice(ctx);
     if (act === 'repos') menuRepos(ctx);
     if (act === 'reduire') reduire(el, ctx);
@@ -241,7 +243,9 @@ const blocConseil = (state, ex) => {
   return `<div class="conseil ${c.action === 'augmenter' ? 'pos' : c.action === 'decharger' ? 'warn' : ''}">${esc(c.texte)}</div>`;
 };
 const lienExo = (ex, nom) => `<a href="#/exercices/${encodeURIComponent(ex.id)}" style="color:inherit;text-decoration:none">${esc(nom)}</a>`;
-const boutonMenu = (ei, nom) => `<button class="btn btn-texte btn-sm btn-icone" data-act="menu-ex" data-ei="${ei}" aria-label="Options de ${esc(nom)}">${icon('plusieurs')}</button>`;
+const boutonMenu = (ei, nom) => `<div style="display:flex;flex:none">
+  <button class="btn btn-texte btn-sm btn-icone" data-act="remplacer-ex" data-ei="${ei}" aria-label="Remplacer ${esc(nom)}">${icon('echange')}</button>
+  <button class="btn btn-texte btn-sm btn-icone" data-act="menu-ex" data-ei="${ei}" aria-label="Options de ${esc(nom)}">${icon('plusieurs')}</button></div>`;
 
 function carte(state, ex, e, ei) {
   const w = state.enCours, repos = ex.reposSec ?? 90, cols = e.afficherRir ? 6 : 5;
@@ -379,6 +383,24 @@ function menuExercice(ctx, ei) {
   });
 }
 
+// Remplacer A par B (spec montre §Remplacer) : les plus proches en tête, puis tout le catalogue.
+function choisirRemplacant(ctx, ei) {
+  const w = ctx.state.enCours, e = w.entrees[ei];
+  if (e.series.every(s => s.faite)) return toast('Toutes les séries sont faites.', 'info');
+  const proches = alternatives(ctx.state, e.exerciseId, w), ids = new Set(proches.map(x => x.id));
+  const autres = ctx.state.exercises.filter(x => !x.archive && !ids.has(x.id) && x.id !== e.exerciseId).sort((a, b) => a.nom.localeCompare(b.nom));
+  const ligne = x => `<li><a class="liste-ligne" href="javascript:void 0" data-id="${esc(x.id)}"><b>${esc(x.nom)}</b>${icon('echange', 'icone chevron')}</a></li>`;
+  const f = ouvrirFeuille({ titre: `Remplacer ${e.nomExercice}`, corps: `${proches.length ? `<div class="label">Les plus proches</div><ul class="liste">${proches.map(ligne).join('')}</ul>` : ''}
+    <div class="label" style="margin-top:12px">Tous les exercices</div><ul class="liste">${autres.map(ligne).join('')}</ul>` });
+  f.addEventListener('click', ev => {
+    const id = ev.target.closest('[data-id]')?.dataset.id;
+    if (!id) return;
+    ev.preventDefault();
+    ctx.maj(s => ({ ...s, enCours: remplacerExercice(s.enCours, s, ei, id) }));
+    fermerFeuille(f);
+  });
+}
+
 function choisirExercice(ctx) {
   const liste = ctx.state.exercises.filter(e => !e.archive).sort((a, b) => a.nom.localeCompare(b.nom));
   const f = ouvrirFeuille({ titre: 'Ajouter un exercice', corps: `<ul class="liste">${liste.map(e =>
@@ -402,14 +424,19 @@ async function finir(ctx) {
     if (!c || c === 'annuler') return;
     if (c === 'valider') ctx.maj(s => ({ ...s, enCours: cocherRestantes(s.enCours, s) }), { rendre: false });
   }
+  await recupererAvantFin(ctx); // séries validées sur la montre pas encore arrivées
   const r = terminer(ctx.state, new Date());
   if (!r.workout.entrees.length) {
-    if (await confirmer('Aucune série n’est cochée : rien ne sera enregistré.', { titre: 'Abandonner la séance ?', ok: 'Abandonner', danger: true })) {
+    const msg = etatMontre() === 'activee'
+      ? 'Aucune série n’est cochée. Si tu as utilisé la montre, ses séries ne sont peut-être pas encore arrivées : reviens à la séance et réessaie dans quelques secondes.'
+      : 'Aucune série n’est cochée : rien ne sera enregistré.';
+    if (await confirmer(msg, { titre: 'Abandonner la séance ?', ok: 'Abandonner', danger: true })) {
       ctx.maj(s => ({ ...s, enCours: null }), { rendre: false });
       ctx.aller('#/programmes');
     }
     return;
   }
+  attendreFin(r.workout.id); // la montre peut encore envoyer des séries et son résumé
   ctx.maj(s => ({ ...s, enCours: null, workouts: [...s.workouts, r.workout] }), { rendre: false });
   if (r.programmeModifie && await confirmer('Tu as changé le nombre de séries ou l’ordre des exercices pendant la séance.', { titre: 'Mettre à jour le programme ?', ok: 'Mettre à jour' }))
     ctx.maj(s => ({ ...s, templates: s.templates.map(t => t.id === w.templateId ? { ...t, items: programmeDepuisSeance(w) } : t) }), { rendre: false });

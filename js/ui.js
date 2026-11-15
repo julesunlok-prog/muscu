@@ -28,6 +28,7 @@ const PATHS = {
   haut: 'M6 15l6-6 6 6',
   bas: 'M6 9l6 6 6-6',
   plusieurs: 'M5 12h.01M12 12h.01M19 12h.01',
+  echange: 'M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7',
   info: 'M12 16v-4M12 8h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
   alerte: 'M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
   telecharger: 'M12 3v12M7 10l5 5 5-5M5 21h14',
