@@ -20,11 +20,15 @@ const valide = s => s && s.version === 1 && ['exercises', 'templates', 'workouts
 // pour que les corrections de sources arrivent aussi dans les données déjà enregistrées.
 // Exercices ajoutés au catalogue depuis le dernier chargement : ajoutés une seule fois (un exercice supprimé ne revient pas).
 const SEED = Object.fromEntries(EXERCICES_INITIAUX.map(e => [e.id, e]));
+// Fiche du catalogue corrigée après publication (seed : corrige = numéro du catalogue de la correction) :
+// nom et matériel remis à jour une seule fois ; un renommage fait ensuite par l'utilisateur est gardé.
+const corrections = (seed, vu) => (seed.corrige ?? 0) > vu
+  ? { nom: seed.nom, materiel: seed.materiel, pasMateriel: seed.pasMateriel, parMain: seed.parMain, type: seed.type } : {};
 function notesAJour(s) {
   const vu = s.settings.catalogue ?? 1, ids = new Set(s.exercises.map(e => e.id));
   const nouveaux = EXERCICES_INITIAUX.filter(e => (e.catalogue ?? 1) > vu && !ids.has(e.id));
   return { ...s, settings: { ...s.settings, catalogue: CATALOGUE },
-    exercises: [...s.exercises.map(e => SEED[e.id] ? { ...e, note: SEED[e.id].note, sources: SEED[e.id].sources } : e), ...structuredClone(nouveaux)] };
+    exercises: [...s.exercises.map(e => SEED[e.id] ? { ...e, ...corrections(SEED[e.id], vu), note: SEED[e.id].note, sources: SEED[e.id].sources } : e), ...structuredClone(nouveaux)] };
 }
 
 export function chargerEtat(storage = globalThis.localStorage) {

@@ -63,11 +63,12 @@ export const EXERCICES_INITIAUX = [
   ex('ecarte-halteres', 'Écarté haltères (banc)', 'halteres', 'iso', 'pectoraux', ['delt_ant'],
     'Isolation des pectoraux, couché sur un banc. Conseil de technique : coudes légèrement fléchis, descends lentement jusqu’à sentir l’étirement sans forcer l’épaule. Charges bien plus légères qu’au développé : progresse surtout en reps.',
     [], { catalogue: 3 }),
-  ex('chest-press-debout', 'Chest press debout (poulie)', 'poulie', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
-    'Développé debout à la poulie. Debout, l’équilibre limite la charge : utile en variante ou en fin de séance plutôt qu’à la place d’un développé lourd. Machines, poulies et poids libres font grossir le muscle autant à effort égal.',
-    ['S30'], { catalogue: 3 }),
+  // corrige: 4 — publiée d'abord en « Chest press debout (poulie) » : nom et matériel remis à jour une fois (store.js).
+  ex('chest-press-debout', 'Standing chest press gym80', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
+    'Développé debout guidé, sur la machine gym80 chargée avec des disques : la machine guide la trajectoire. Machines et poids libres font grossir le muscle autant à effort égal.',
+    ['S30'], { catalogue: 3, corrige: 4 }),
 ];
-export const CATALOGUE = Math.max(...EXERCICES_INITIAUX.map(e => e.catalogue ?? 1));
+export const CATALOGUE = Math.max(...EXERCICES_INITIAUX.map(e => Math.max(e.catalogue ?? 1, e.corrige ?? 1)));
 
 const item = (exerciseId, supersetGroupe = null) => ({ exerciseId, series: 3, supersetGroupe });
 
