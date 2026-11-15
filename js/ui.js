@@ -112,13 +112,15 @@ export function ticPartout() {
   new MutationObserver(poser).observe(document.body, { childList: true, subtree: true });
   document.addEventListener('change', e => { if (e.target.classList?.contains('tic')) try { navigator.vibrate?.(8); } catch { /* pas de vibration */ } });
   // L'interrupteur bascule aussi quand on glisse le doigt dessus, et ce basculement clique le bouton (« + Série » en défilant).
-  // Un toucher qui a bougé de plus de 10 px, ou que le défilement a interrompu, n'est donc pas un clic.
+  // Un toucher parti d'un bouton qui a bougé de plus de 10 px, ou que le défilement a interrompu, n'est donc pas un clic.
+  // Limité aux boutons : sur un champ texte, iOS interrompt toujours le toucher (pointercancel) pour gérer la saisie,
+  // et bloquer ce clic empêchait le champ de s'ouvrir.
   let depart = null, bouge = false, sansClicJusqua = 0;
-  document.addEventListener('pointerdown', e => { depart = [e.clientX, e.clientY]; bouge = false; }, true);
+  document.addEventListener('pointerdown', e => { depart = e.target.closest?.('button') ? [e.clientX, e.clientY] : null; bouge = false; }, true);
   document.addEventListener('pointermove', e => { if (depart && Math.hypot(e.clientX - depart[0], e.clientY - depart[1]) > 10) bouge = true; }, true);
-  document.addEventListener('pointercancel', () => { depart = null; sansClicJusqua = Date.now() + 400; }, true);
+  document.addEventListener('pointercancel', () => { if (depart) sansClicJusqua = Date.now() + 400; depart = null; }, true);
   document.addEventListener('pointerup', () => { if (bouge) sansClicJusqua = Date.now() + 400; depart = null; bouge = false; }, true);
-  document.addEventListener('click', e => { if (Date.now() < sansClicJusqua) { e.preventDefault(); e.stopPropagation(); } }, true);
+  document.addEventListener('click', e => { if (Date.now() < sansClicJusqua && e.target.closest?.('button')) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 
 // Durée de repos : champ « heure » détourné (mm:ss affiché comme hh:mm), seul moyen d'ouvrir la vraie roulette iOS à deux colonnes.
