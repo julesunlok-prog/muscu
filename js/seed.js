@@ -43,7 +43,15 @@ export const EXERCICES_INITIAUX = [
     'Même mouvement que la version barre, suivi à part pour ne pas fausser l’historique.', ['S16'], { rirCible: '2–3' }),
   ex('leg-extension', 'Leg extension', 'machine_pile', 'iso', 'quadriceps', [],
     'Incline le dossier vers l’arrière : plus de croissance du droit fémoral. Insiste sur la partie basse du mouvement (genou fléchi), là où le quadriceps est étiré.', ['S26', 'S17']),
+  // Catalogue 2 (2026-11) : ajoutés aussi aux données déjà enregistrées (store.js).
+  ex('developpe-militaire-smith', 'Développé militaire Smith', 'smith', 'poly_haut', 'delt_ant', ['delt_lat', 'triceps'],
+    'Polyarticulaire des épaules : surtout le deltoïde antérieur, avec le latéral et les triceps. Tes développés couchés font déjà grossir le deltoïde antérieur, et aucune étude ne montre que le développé militaire en apporte plus. Pour la largeur des épaules (deltoïde latéral), les élévations latérales restent l’exercice clé. La Smith est stable : tu charges plus lourd, mais les deltoïdes travaillent un peu moins qu’aux haltères debout.',
+    ['S28', 'S29', 'S30'], { catalogue: 2 }),
+  ex('presse-inclinee', 'Presse inclinée pectoraux (machine)', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
+    'Version guidée du développé incliné : le haut des pectoraux grossit davantage en incliné qu’à plat (étude chez des débutants). Machines et poids libres font grossir le muscle autant : choisis selon ton confort. Fait doublon avec le développé incliné Smith : garde l’un des deux ou alterne-les.',
+    ['S31', 'S30', 'S11'], { catalogue: 2 }),
 ];
+export const CATALOGUE = Math.max(...EXERCICES_INITIAUX.map(e => e.catalogue ?? 1));
 
 const item = (exerciseId, supersetGroupe = null) => ({ exerciseId, series: 3, supersetGroupe });
 
@@ -87,4 +95,8 @@ export const SOURCES = {
   S25: { titre: 'Wolf et al. 2023 — amplitude partielle vs complète (méta-analyse, IJSC)', url: 'https://doi.org/10.47206/ijsc.v3i1.182' },
   S26: { titre: 'Larsen et al. 2025 — leg extension dossier incliné : plus de croissance du droit fémoral (J Sports Sci)', url: 'https://doi.org/10.1080/02640414.2024.2444713' },
   S27: { titre: 'Kassiano et al. 2026 — augmenter la charge en haut de la fourchette (MSSE)', url: 'https://doi.org/10.1249/MSS.0000000000003968' },
+  S28: { titre: 'Essai de 10 semaines de développé couché : il fait aussi grossir le deltoïde antérieur (J Bodyw Mov Ther 2024)', url: 'https://pubmed.ncbi.nlm.nih.gov/39593465/' },
+  S29: { titre: 'Saeterbakken & Fimland 2013 — développé épaules assis/debout, barre/haltères (EMG, JSCR)', url: 'https://pubmed.ncbi.nlm.nih.gov/23096062/' },
+  S30: { titre: 'Haugen et al. 2023 — machines vs poids libres : même hypertrophie (méta-analyse)', url: 'https://doi.org/10.1186/s13102-023-00713-4' },
+  S31: { titre: 'Chaves et al. 2020 — développé incliné : plus de croissance du haut des pectoraux (Int J Exerc Sci)', url: 'https://pubmed.ncbi.nlm.nih.gov/32922646/' },
 };

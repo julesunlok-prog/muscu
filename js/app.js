@@ -2,6 +2,7 @@
 import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CLE } from './store.js';
 import { resteRepos, ajusterRepos, passerRepos } from './seance.js';
 import { genererDemo } from './demo.js';
+import { synchroniser, pilule } from './alarme.js';
 import { icon, toast, fmtChrono, esc, confirmer, telecharger, ticPartout, fermerFeuille } from './ui.js';
 import * as programmes from './vues/programmes.js';
 import * as seance from './vues/seance.js';
@@ -42,6 +43,7 @@ export const ctx = {
     enregistrer();
     if (rendre) afficher();
     majMinuteur();
+    synchroniser(state, { demo: !!reel }); // alarme de repos côté serveur (sonne app fermée)
   },
   remplacerEtat(s) { state = s; lectureEchouee = false; reel = null; enregistrer(); appliquerTheme(); afficher(); },
   get demo() { return !!reel; },
@@ -143,6 +145,11 @@ const SON_DEBUT = [[0, 660], [0.12, 990]], SON_FIN = [[0, 880], [0.25, 880], [0.
 // [data-repos-temps] reçoit le décompte, [data-repos-rail] la part restante, [data-repos-on] les classes « actif » et « pause ».
 function majMinuteur() {
   const w = state.enCours, repos = w?.repos;
+  const alarme = pilule(); // demande à l'alarme ratée (pas de réseau) : signalée sur la pilule tant qu'elle compte
+  document.querySelectorAll('.repos-pilule').forEach(p => {
+    p.classList.toggle('alarme-ko', !!alarme);
+    p.title = alarme === 'non-programmee' ? 'Alarme non programmée (pas de réseau)' : alarme === 'pas-annulee' ? 'Alarme pas annulée (pas de réseau)' : '';
+  });
   document.querySelectorAll('[data-repos-on]').forEach(x => { x.classList.toggle('actif', !!repos); x.classList.toggle('pause', repos?.pause != null); });
   if (!repos) {
     barre.classList.add('hidden');
@@ -177,6 +184,9 @@ barre.addEventListener('click', e => {
 });
 setInterval(majMinuteur, 250);
 document.addEventListener('visibilitychange', majMinuteur);
+// Demande d'alarme ratée : réessayée au retour du réseau et au retour dans l'app.
+window.addEventListener('online', () => synchroniser(state, { demo: !!reel }));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') synchroniser(state, { demo: !!reel }); });
 
 // ---------- Coquille ----------
 document.getElementById('onglets').innerHTML = ONGLETS.map(([nom, ic, libelle]) =>

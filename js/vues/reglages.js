@@ -3,6 +3,7 @@ import { exporterJSON, importerJSON } from '../store.js';
 import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts } from '../strong-import.js';
 import { ciblesVolume } from '../moteur.js';
 import { lireNombre } from '../seance.js';
+import { activer, tester, desactiver, etat } from '../alarme.js';
 import { MUSCLES, NOM_MUSCLE } from '../profils.js';
 import { SOURCES } from '../seed.js';
 import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger } from '../ui.js';
@@ -17,6 +18,8 @@ export function render(el, ctx) {
       <div class="seg" role="group" aria-label="Thème">${[['auto', 'Automatique'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) =>
         `<button data-theme="${k}" aria-pressed="${theme === k}">${l}</button>`).join('')}</div>
     </section>
+
+    ${carteAlarme()}
 
     ${ctx.demo ? '' : `<section class="card">
       <h2 class="card-title" style="margin-bottom:6px">Démo</h2>
@@ -57,6 +60,14 @@ export function render(el, ctx) {
     const t = e.target.closest('[data-theme]')?.dataset.theme;
     if (t) { ctx.maj(s => ({ ...s, settings: { ...s.settings, theme: t } })); appliquer(t); }
     if (e.target.closest('[data-act="exporter"]')) exporter(ctx.state);
+    const a = e.target.closest('[data-alarme]')?.dataset.alarme;
+    // activer() est appelée sans attente avant : iOS n'accorde la permission de notifications qu'en réponse directe au toucher.
+    if (a === 'activer') activer(el.querySelector('#alarme-code').value.trim()).then(r => {
+      toast(MESSAGES_ALARME[r], r === 'ok' ? undefined : 'error');
+      if (r === 'ok') ctx.rendre();
+    });
+    if (a === 'tester') tester().then(ok => toast(ok ? 'Notification dans 10 s : verrouille l’iPhone pour essayer.' : 'Pas de réponse du serveur : vérifie le réseau.', ok ? 'info' : 'error'));
+    if (a === 'desactiver') desactiver().then(() => { toast('Alarme désactivée.'); ctx.rendre(); });
   };
   el.onchange = async e => {
     const i = e.target;
@@ -77,6 +88,30 @@ export function render(el, ctx) {
       else importerStrong(ctx, texte);
     }
   };
+}
+
+const MESSAGES_ALARME = {
+  ok: 'Alarme activée.', code: 'Code refusé.', reseau: 'Pas de réponse du serveur : vérifie le réseau.',
+  refuse: 'Notifications refusées : Réglages iOS → Notifications → Muscu.',
+  indisponible: 'Ajoute l’app à l’écran d’accueil (iOS 16.4+) pour activer l’alarme.',
+};
+
+// Alarme de repos (spec 2026-11-15) : notification à la fin du repos, même app fermée.
+function carteAlarme() {
+  const e = etat();
+  const statut = { activee: 'Activée', desactivee: 'Désactivée', refusee: 'Notifications refusées', indisponible: 'Non disponible' }[e];
+  return `<section class="card">
+    <h2 class="card-title" style="margin-bottom:6px">Alarme de repos <span class="badge ${e === 'activee' ? 'pos' : ''}">${statut}</span></h2>
+    <p class="faint" style="margin:0 0 12px">Une notification à la fin de chaque repos, même app fermée. Sonne si le téléphone n’est pas en silencieux, sinon vibre.</p>
+    ${e === 'activee' ? `<div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:1" data-alarme="tester">Tester</button>
+        <button class="btn btn-texte" style="flex:1" data-alarme="desactiver">Désactiver</button></div>`
+      : `${e === 'refusee' ? `<p class="faint" style="margin:0 0 10px">${MESSAGES_ALARME.refuse}</p>` : ''}
+      ${e === 'indisponible' ? `<p class="faint" style="margin:0 0 10px">${MESSAGES_ALARME.indisponible}</p>` : ''}
+      <div class="form-group"><label for="alarme-code">Code</label>
+        <input id="alarme-code" class="form-control" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+      <button class="btn btn-primary btn-bloc" data-alarme="activer">Activer</button>`}
+  </section>`;
 }
 
 function appliquer(t) {

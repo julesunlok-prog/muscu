@@ -1,5 +1,5 @@
 // État de l'app : un seul objet, sauvegardé à chaque modification.
-import { EXERCICES_INITIAUX, PROGRAMMES_INITIAUX } from './seed.js';
+import { EXERCICES_INITIAUX, PROGRAMMES_INITIAUX, CATALOGUE } from './seed.js';
 
 export const CLE = 'muscu:v1';
 
@@ -10,7 +10,7 @@ export function etatInitial() {
     templates: PROGRAMMES_INITIAUX,
     workouts: [],
     enCours: null,
-    settings: { musclesPrioritaires: ['pectoraux'], ciblesVolume: {} },
+    settings: { musclesPrioritaires: ['pectoraux'], ciblesVolume: {}, catalogue: CATALOGUE },
   });
 }
 
@@ -18,8 +18,14 @@ const valide = s => s && s.version === 1 && ['exercises', 'templates', 'workouts
 
 // Notes et sources des exercices de départ : toujours celles du code (elles ne se modifient pas dans l'app),
 // pour que les corrections de sources arrivent aussi dans les données déjà enregistrées.
+// Exercices ajoutés au catalogue depuis le dernier chargement : ajoutés une seule fois (un exercice supprimé ne revient pas).
 const SEED = Object.fromEntries(EXERCICES_INITIAUX.map(e => [e.id, e]));
-const notesAJour = s => ({ ...s, exercises: s.exercises.map(e => SEED[e.id] ? { ...e, note: SEED[e.id].note, sources: SEED[e.id].sources } : e) });
+function notesAJour(s) {
+  const vu = s.settings.catalogue ?? 1, ids = new Set(s.exercises.map(e => e.id));
+  const nouveaux = EXERCICES_INITIAUX.filter(e => (e.catalogue ?? 1) > vu && !ids.has(e.id));
+  return { ...s, settings: { ...s.settings, catalogue: CATALOGUE },
+    exercises: [...s.exercises.map(e => SEED[e.id] ? { ...e, note: SEED[e.id].note, sources: SEED[e.id].sources } : e), ...structuredClone(nouveaux)] };
+}
 
 export function chargerEtat(storage = globalThis.localStorage) {
   let brut = null;

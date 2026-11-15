@@ -181,6 +181,8 @@ button:disabled > .tic { display: none; }
 .repos-pilule.actif { background: var(--data); color: var(--sur-couleur); }
 .repos-pilule.pause { opacity: .7; }
 .repos-pilule [data-repos-temps]:empty { display: none; }
+/* Alarme de repos non programmée ou pas annulée (pas de réseau) : point orange, explication dans le title. */
+.repos-pilule.alarme-ko::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 2px var(--surface); }
 
 /* Séance : monte du bas à l'ouverture, redescend quand on la réduit, revient en place si le glisser est trop court. */
 #vue[data-vue="seance"]:not([data-meme]) { animation: fade .2s ease; }
