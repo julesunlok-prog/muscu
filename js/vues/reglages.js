@@ -132,6 +132,13 @@ for (const type of ['touchstart', 'touchend', 'touchcancel', 'pointerdown', 'poi
   window.addEventListener(type, e => { if (location.hash.startsWith('#/reglages')) noterDiag(`↑ ${type}${e.defaultPrevented ? ' BLOQUÉ' : ''}`); }, { passive: true });
 }
 noterDiag(`version ${navigator.userAgent.match(/OS [\d_]+/)?.[0] ?? '?'} · écran d’accueil : ${navigator.standalone ?? matchMedia('(display-mode: standalone)').matches}`);
+// Après le focus : le champ est-il toujours dans la page, a-t-il gardé le focus, le clavier s'est-il ouvert (hauteur visible) ?
+window.addEventListener('focusin', e => {
+  if (!location.hash.startsWith('#/reglages') || !e.target.matches?.('input, textarea')) return;
+  const champ = e.target, h0 = Math.round(window.visualViewport?.height ?? innerHeight);
+  for (const ms of [50, 300, 1000]) setTimeout(() => noterDiag(`+${ms}ms dans la page:${champ.isConnected} focus:${cibleDiag(document.activeElement)} hauteur:${h0}→${Math.round(window.visualViewport?.height ?? innerHeight)}`), ms);
+}, true);
+window.addEventListener('blur', () => { if (location.hash.startsWith('#/reglages')) noterDiag('fenêtre: blur'); });
 
 function appliquer(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
