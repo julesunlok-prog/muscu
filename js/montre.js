@@ -100,7 +100,8 @@ function un(state, ev, now) {
     const [ei, si] = p;
     if (ev.type === 'repos') w2 = surSerie(base, ei, si, s => ({ ...s, montre: { ...s.montre, fcFinRepos: ev.fc } }));
     else {
-      w2 = surSerie(base, ei, si, s => ({ ...s, kg: ev.kg, reps: ev.reps, faite: true, montre: { ...s.montre, fcMoy: ev.fcMoy, fcMax: ev.fcMax } }));
+      w2 = surSerie(base, ei, si, s => ({ ...s, kg: ev.kg, reps: ev.reps, faite: true, montre: { ...s.montre, fcMoy: ev.fcMoy, fcMax: ev.fcMax },
+        ...(Array.isArray(ev.deg) ? { degressive: { reps: ev.deg[0], kgFin: ev.deg[1] ?? null } } : {}) }));
       const fin = ev.t + ev.repos * 1000;
       if (enCours && ev.repos > 0 && fin > now) w2 = { ...w2, repos: { fin, duree: ev.repos, ei, si, montre: true } };
     }

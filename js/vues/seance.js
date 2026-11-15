@@ -3,9 +3,9 @@
 // minuteur dans l'en-tête, poignée pour réduire la séance, écran « Bravo » à la fin.
 import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
-  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos, alternatives, remplacerExercice } from '../seance.js';
+  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos, alternatives, remplacerExercice, basculerDegressive, modifierDegressive } from '../seance.js';
 import { recupererAvantFin, attendreFin, etatMontre } from '../montre.js';
-import { conseil, sessionsDe, e1rm } from '../moteur.js';
+import { conseil, sessionsDe, e1rm, tonnage } from '../moteur.js';
 import * as programmes from './programmes.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
   champDuree, lireDuree, valeurDuree } from '../ui.js';
@@ -52,6 +52,8 @@ export function render(el, ctx) {
   // Saisie : on sauvegarde à chaque frappe sans réafficher, pour garder le clavier ouvert.
   // Le trait de repos cache un champ « heure » (roulette iOS) : on ne réaffiche pas non plus, sinon la roulette se fermerait.
   el.oninput = el.onchange = e => {
+    const d = e.target.closest('input[data-deg]'); // les 2 cases d'une dégressive
+    if (d) return ctx.maj(s => ({ ...s, enCours: modifierDegressive(s.enCours, +d.dataset.ei, +d.dataset.si, d.dataset.deg, lireNombre(d.value)) }), { rendre: false });
     const i = e.target.closest('input[data-champ]');
     if (i) {
       const { ei, si, champ } = i.dataset;
@@ -238,6 +240,12 @@ function ligneRepos(w, ei, si, cols, cle, repos, nom) {
 
 const champSerie = (ei, si, s, nom, mode) => `<input data-champ="${nom}" data-ei="${ei}" data-si="${si}" inputmode="${mode}" enterkeyhint="done" autocomplete="off"
   value="${s[nom] == null ? '' : fmtKg(s[nom])}" placeholder="${nom === 'rir' ? '–' : ''}" aria-label="${nom === 'kg' ? 'Charge' : nom === 'reps' ? 'Répétitions' : 'RIR'} série ${si + 1}">`;
+// Sous une série dégressive : reps faites en baissant la charge (toutes additionnées) et poids final, facultatif.
+const ligneDegressive = (ei, si, s, cols) => `<tr class="ligne-deg"><td colspan="${cols}"><div class="deg">
+  <span>↳ Dégressive</span>
+  <label>+ <input data-deg="reps" data-ei="${ei}" data-si="${si}" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="${s.degressive.reps ?? ''}" aria-label="Reps en plus, série ${si + 1}"> reps</label>
+  <label>jusqu’à <input data-deg="kgFin" data-ei="${ei}" data-si="${si}" inputmode="decimal" enterkeyhint="done" autocomplete="off" value="${s.degressive.kgFin == null ? '' : fmtKg(s.degressive.kgFin)}" placeholder="auto" aria-label="Poids final, série ${si + 1}"> kg</label>
+  </div></td></tr>`;
 const blocConseil = (state, ex) => {
   const c = conseil(ex, sessionsDe(state, ex.id));
   return `<div class="conseil ${c.action === 'augmenter' ? 'pos' : c.action === 'decharger' ? 'warn' : ''}">${esc(c.texte)}</div>`;
@@ -265,6 +273,7 @@ function carte(state, ex, e, ei) {
         <td class="prec">${esc(precedent(state, ex.id, si) ?? '—')}</td>
         <td>${champSerie(ei, si, s, 'kg', 'decimal')}</td><td>${champSerie(ei, si, s, 'reps', 'numeric')}</td>${e.afficherRir ? `<td>${champSerie(ei, si, s, 'rir', 'numeric')}</td>` : ''}
         <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>
+        ${s.degressive ? ligneDegressive(ei, si, s, cols) : ''}
         ${ligneRepos(w, ei, si, cols, ei, repos, e.nomExercice)}`;
     }).join('')}</tbody></table>
     <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}"><span>+ Série (<span data-repos-txt="${ei}">${fmtChrono(repos)}</span>)</span></button></div>
@@ -344,11 +353,12 @@ function menuSerie(ctx, eis, si) {
   const s = ctx.state.enCours.entrees[eis[0]].series[si], tour = eis.length > 1;
   const f = ouvrirFeuille({ titre: `${tour ? 'Tour' : 'Série'} ${si + 1}`, corps: `
     <button class="btn btn-secondary btn-bloc" data-m="echauf" style="margin-bottom:8px">${s.echauffement ? `Marquer comme ${tour ? 'tour' : 'série'} de travail` : 'Marquer comme échauffement'}</button>
+    ${tour ? '' : `<button class="btn btn-secondary btn-bloc" data-m="deg" style="margin-bottom:8px">${s.degressive ? 'Retirer la dégressive' : 'Marquer comme dégressive'}</button>`}
     <button class="btn btn-danger btn-bloc" data-m="suppr">Supprimer ${tour ? 'le tour' : 'la série'}</button>` });
   f.addEventListener('click', e => {
     const m = e.target.closest('[data-m]')?.dataset.m;
     if (!m) return;
-    const fn = m === 'echauf' ? basculerEchauffement : supprimerSerie;
+    const fn = m === 'echauf' ? basculerEchauffement : m === 'deg' ? basculerDegressive : supprimerSerie;
     ctx.maj(st => ({ ...st, enCours: eis.reduce((w, ei) => fn(w, ei, si), st.enCours) }));
     fermerFeuille(f);
   });
@@ -447,7 +457,7 @@ async function finir(ctx) {
 // Écran de fin : étoiles, confettis et résumé (meilleure série de chaque exercice).
 function bravo({ workout, records }, n) {
   const travail = e => e.series.filter(s => !s.echauffement);
-  const volume = workout.entrees.flatMap(travail).reduce((t, s) => t + s.kg * s.reps, 0);
+  const volume = workout.entrees.flatMap(travail).reduce((t, s) => t + tonnage(s), 0);
   const meilleure = e => travail(e).reduce((m, s) => (e1rm(s.kg, s.reps) ?? s.kg) > (e1rm(m.kg, m.reps) ?? m.kg) ? s : m, travail(e)[0] ?? e.series[0]);
   const o = document.createElement('div');
   o.className = 'bravo'; o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true'); o.setAttribute('aria-label', 'Séance terminée');

@@ -271,6 +271,10 @@ button:disabled > .tic { display: none; }
 .series input:focus { outline: 0; border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
 .series input::placeholder { color: var(--faint); font-weight: 400; }
 .series tr.faite td { background: var(--pos-bg); }
+.ligne-deg .deg { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 12px; padding: 2px 4px 8px; font-size: 13px; color: var(--muted); }
+.ligne-deg .deg span { margin-right: auto; }
+.ligne-deg label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; font-weight: 400; color: var(--muted); }
+.series .ligne-deg input { width: 56px; height: 36px; font-size: 15px; }
 .series tr.faite td:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
 .series tr.faite td:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
 .series tr.faite input { background: transparent; }

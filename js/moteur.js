@@ -9,13 +9,22 @@ export function e1rm(kg, reps) {
   return reps === 1 ? kg : kg * (1 + reps / 30);
 }
 
+// Volume (kg × reps) d'une série. Dégressive : les baisses comptent avec la charge moyenne entre le début et le
+// poids final, ou 70 % de la charge de départ si le poids final n'est pas saisi (aucune saisie de chaque baisse).
+export const CHUTE_ESTIMEE = 0.7;
+export function tonnage(s) {
+  const d = s.degressive, base = s.kg * s.reps;
+  if (!d?.reps) return base;
+  return base + (d.kgFin != null ? (s.kg + d.kgFin) / 2 : s.kg * CHUTE_ESTIMEE) * d.reps;
+}
+
 const serieValide = s => s.faite && !s.echauffement && s.kg != null && s.kg >= 0 && s.reps > 0;
 
 // Séances d'un exercice, de la plus ancienne à la plus récente, avec seulement les séries de travail faites.
 export function sessionsDe(state, exerciseId) {
   return state.workouts
     .flatMap(w => w.entrees.filter(e => e.exerciseId === exerciseId)
-      .map(e => ({ date: w.debut, series: e.series.filter(serieValide).map(({ kg, reps }) => ({ kg, reps })) })))
+      .map(e => ({ date: w.debut, series: e.series.filter(serieValide).map(({ kg, reps, degressive }) => degressive ? { kg, reps, degressive } : { kg, reps }) })))
     .filter(s => s.series.length)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -287,7 +296,7 @@ export function bilanMois(state, now = new Date()) {
   const prog = Object.values(progressionMuscles(state, now, 30)).filter(x => x != null);
   return {
     seances: new Set(ws.map(w => jourLocal(w.debut))).size, series: series.length,
-    volume: series.reduce((t, x) => t + x.kg * x.reps, 0),
+    volume: series.reduce((t, x) => t + tonnage(x), 0),
     records: records(state).filter(r => dans(r.date, debut, now)).length,
     stagnations: actifs(state).filter(e => stagnation(e, sessionsDe(state, e.id))).map(e => e.nom),
     retard, progressionForce: prog.length ? prog.reduce((t, x) => t + x, 0) / prog.length : null,

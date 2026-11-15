@@ -1,5 +1,6 @@
 // Historique des séances : liste, détail modifiable, suppression.
 import { lireNombre, modifierSeanceHistorique } from '../seance.js';
+import { tonnage } from '../moteur.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, toast } from '../ui.js';
 
 const travail = w => w.entrees.flatMap(e => e.series.filter(s => !s.echauffement));
@@ -19,7 +20,7 @@ export function render(el, ctx) {
       const s = travail(w);
       return `<li><a class="liste-ligne" href="javascript:void 0" data-id="${esc(w.id)}">
         <div style="min-width:0"><b>${esc(w.nom)}</b><div class="faint">${esc(fmtDateLongue(w.debut))}</div></div>
-        <div class="num faint" style="flex:none">${s.length} séries · ${fmtNum(s.reduce((t, x) => t + x.kg * x.reps, 0), 0)} kg<br>${w.fin && w.fin !== w.debut ? fmtDuree(Date.parse(w.fin) - Date.parse(w.debut)) : ''}</div>
+        <div class="num faint" style="flex:none">${s.length} séries · ${fmtNum(s.reduce((t, x) => t + tonnage(x), 0), 0)} kg<br>${w.fin && w.fin !== w.debut ? fmtDuree(Date.parse(w.fin) - Date.parse(w.debut)) : ''}</div>
         ${icon('chevron', 'icone chevron')}</a></li>`;
     }).join('')}</ul></section>`
     : `<div class="empty-state"><div class="empty-title">Aucune séance</div><div class="empty-sub">Termine ta première séance, ou importe ton historique Strong dans Réglages.</div>
@@ -37,7 +38,7 @@ function detail(ctx, w) {
       <table class="series"><thead><tr><th>Série</th><th>kg</th><th>Reps</th>${avecFc ? '<th>FC</th>' : ''}</tr></thead><tbody>
       ${e.series.map((s, si) => `<tr><td class="n">${s.echauffement ? 'É' : si + 1}</td>
         <td><input data-ei="${ei}" data-si="${si}" data-champ="kg" inputmode="decimal" value="${fmtKg(s.kg)}" aria-label="Charge"></td>
-        <td><input data-ei="${ei}" data-si="${si}" data-champ="reps" inputmode="numeric" value="${s.reps}" aria-label="Répétitions"></td>${avecFc ? `<td class="num faint">${fc(s.montre)}</td>` : ''}</tr>`).join('')}
+        <td><input data-ei="${ei}" data-si="${si}" data-champ="reps" inputmode="numeric" value="${s.reps}" aria-label="Répétitions"></td>${avecFc ? `<td class="num faint">${fc(s.montre)}</td>` : ''}</tr>${s.degressive?.reps ? `<tr><td></td><td colspan="${avecFc ? 3 : 2}" class="faint" style="text-align:left;font-size:13px">↳ Dégressive : +${s.degressive.reps} reps${s.degressive.kgFin != null ? ` jusqu’à ${fmtKg(s.degressive.kgFin)} kg` : ''}</td></tr>` : ''}`).join('')}
       </tbody></table></div>`; }).join(''),
     pied: '<button class="btn btn-danger" data-p="suppr">Supprimer</button><button class="btn btn-primary" data-p="ok">Enregistrer</button>',
   });

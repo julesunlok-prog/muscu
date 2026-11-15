@@ -42,6 +42,9 @@ function surSerie(w, ei, si, fn) {
 
 export const modifierSerie = (w, ei, si, champ, valeur) => surSerie(w, ei, si, s => ({ ...s, [champ]: valeur }));
 export const basculerEchauffement = (w, ei, si) => surSerie(w, ei, si, s => ({ ...s, echauffement: !s.echauffement }));
+// Dégressive : { reps : reps faites après la première charge, toutes baisses additionnées ; kgFin : dernière charge, facultative }.
+export const basculerDegressive = (w, ei, si) => surSerie(w, ei, si, ({ degressive, ...s }) => degressive ? s : { ...s, degressive: { reps: null, kgFin: null } });
+export const modifierDegressive = (w, ei, si, champ, valeur) => surSerie(w, ei, si, s => ({ ...s, degressive: { ...s.degressive, [champ]: valeur } }));
 
 export function cocher(w, ei, si, state, now = new Date()) {
   const s = w.entrees[ei].series[si];

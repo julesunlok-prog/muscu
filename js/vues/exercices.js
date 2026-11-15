@@ -1,5 +1,5 @@
 // Exercices : liste, création, fiche (conseil, graphiques, preuves, réglages).
-import { conseil, sessionsDe, stagnation, prediction, verifierPrediction, e1rm } from '../moteur.js';
+import { conseil, sessionsDe, stagnation, prediction, verifierPrediction, e1rm, tonnage } from '../moteur.js';
 import { PROFILS, MUSCLES, NOM_MUSCLE, MATERIELS, defautsProfil } from '../profils.js';
 import { supprimerExercice } from '../store.js';
 import { lireNombre } from '../seance.js';
@@ -144,7 +144,7 @@ function fiche(el, ctx, ex) {
     ${pts.length ? `<section class="card"><h2 class="card-title" style="margin-bottom:8px">${parE1 ? '1RM estimé' : 'Charge de travail'}</h2>${courbe(pts, { prediction: pred, bande, titre: parE1 ? '1RM estimé par séance' : 'Charge de travail par séance' })}
       <div class="legende"><span><i></i>Séances</span>${pred.length ? '<span><i class="pred"></i>Tendance, projetée à 4 semaines</span><span><i class="bande"></i>Fourchette probable</span>' : ''}</div>
       ${p ? explicationPrediction() : ''}</section>` : ''}
-    ${sessions.length ? `<section class="card"><h2 class="card-title" style="margin-bottom:8px">Volume par séance</h2>${barres(sessions.map(s => ({ x: Date.parse(s.date), y: s.series.reduce((t, r) => t + r.kg * r.reps, 0) })), { titre: 'Volume par séance' })}
+    ${sessions.length ? `<section class="card"><h2 class="card-title" style="margin-bottom:8px">Volume par séance</h2>${barres(sessions.map(s => ({ x: Date.parse(s.date), y: s.series.reduce((t, r) => t + tonnage(r), 0) })), { titre: 'Volume par séance' })}
       <div class="legende"><span>kg × reps, séries de travail</span></div></section>` : ''}
     ${ex.note ? `<section class="card"><h2 class="card-title" style="margin-bottom:6px">Pourquoi cet exercice</h2><p style="margin:0;font-size:14px">${esc(ex.note)}</p>${liensSources(ex.sources)}</section>` : ''}
     ${sessions.length ? `<section class="card" style="padding:4px 8px"><ul class="liste">${[...sessions].reverse().slice(0, 12).map(s =>
