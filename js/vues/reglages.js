@@ -57,7 +57,8 @@ export function render(el, ctx) {
   window.caches?.keys().then(k => { const v = k.find(x => x.startsWith('muscu-')); const p = el.querySelector('[data-version]'); if (v && p) p.textContent = `Version ${v.replace('muscu-', '')}`; }).catch(() => {});
 
   el.onclick = e => {
-    const t = e.target.closest('[data-theme]')?.dataset.theme;
+    // button : <html> porte aussi data-theme (thème Clair/Sombre choisi) ; sans ça, tout toucher redessinait l'écran.
+    const t = e.target.closest('button[data-theme]')?.dataset.theme;
     if (t) { ctx.maj(s => ({ ...s, settings: { ...s.settings, theme: t } })); appliquer(t); }
     if (e.target.closest('[data-act="exporter"]')) exporter(ctx.state);
     const a = e.target.closest('[data-alarme]')?.dataset.alarme;
@@ -111,34 +112,8 @@ function carteAlarme() {
       <div class="form-group"><label for="alarme-code">Code</label>
         <input id="alarme-code" class="form-control" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
       <button class="btn btn-primary btn-bloc" data-alarme="activer">Activer</button>`}
-    <p class="faint" style="margin:12px 0 4px;font-size:12px"><b>Diagnostic (temporaire)</b> : touche le champ Code puis fais une capture d’écran de ce journal.</p>
-    <pre data-diag style="margin:0;font-size:11px;line-height:1.35;white-space:pre-wrap;max-height:200px;overflow:auto;background:var(--chip);border-radius:8px;padding:8px">${esc(journalDiag.join('\n')) || '—'}</pre>
   </section>`;
 }
-
-// Diagnostic temporaire (champ Code impossible à ouvrir sur iPhone) : ce que l'iPhone envoie vraiment au toucher.
-// « ↓ » = l'événement arrive (avant l'app), « ↑ » = il a traversé l'app (bloqué = annulé par du code).
-// shortcut: à retirer dès que la cause est trouvée.
-const journalDiag = [];
-const cibleDiag = t => !t?.tagName ? '?' : `${t.tagName.toLowerCase()}${t.id ? '#' + t.id : ''}${t.className && typeof t.className === 'string' ? '.' + t.className.split(' ')[0] : ''}`;
-function noterDiag(texte) {
-  journalDiag.push(`${new Date().toISOString().slice(17, 23)} ${texte}`);
-  if (journalDiag.length > 30) journalDiag.shift();
-  const pre = document.querySelector('[data-diag]');
-  if (pre) { pre.textContent = journalDiag.join('\n'); pre.scrollTop = pre.scrollHeight; }
-}
-for (const type of ['touchstart', 'touchend', 'touchcancel', 'pointerdown', 'pointerup', 'pointercancel', 'mousedown', 'click', 'focusin', 'focusout']) {
-  window.addEventListener(type, e => { if (location.hash.startsWith('#/reglages')) noterDiag(`↓ ${type} ${cibleDiag(e.target)}`); }, { capture: true, passive: true });
-  window.addEventListener(type, e => { if (location.hash.startsWith('#/reglages')) noterDiag(`↑ ${type}${e.defaultPrevented ? ' BLOQUÉ' : ''}`); }, { passive: true });
-}
-noterDiag(`version ${navigator.userAgent.match(/OS [\d_]+/)?.[0] ?? '?'} · écran d’accueil : ${navigator.standalone ?? matchMedia('(display-mode: standalone)').matches}`);
-// Après le focus : le champ est-il toujours dans la page, a-t-il gardé le focus, le clavier s'est-il ouvert (hauteur visible) ?
-window.addEventListener('focusin', e => {
-  if (!location.hash.startsWith('#/reglages') || !e.target.matches?.('input, textarea')) return;
-  const champ = e.target, h0 = Math.round(window.visualViewport?.height ?? innerHeight);
-  for (const ms of [50, 300, 1000]) setTimeout(() => noterDiag(`+${ms}ms dans la page:${champ.isConnected} focus:${cibleDiag(document.activeElement)} hauteur:${h0}→${Math.round(window.visualViewport?.height ?? innerHeight)}`), ms);
-}, true);
-window.addEventListener('blur', () => { if (location.hash.startsWith('#/reglages')) noterDiag('fenêtre: blur'); });
 
 function appliquer(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
