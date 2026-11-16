@@ -96,7 +96,8 @@ export function ajouterExercice(w, state, exerciseId) {
 // puis même groupe de mouvement (pousser / tirer / jambes), puis le reste de la même moitié du corps.
 const famille = type => type.split('_')[0];
 const GROUPE = { pectoraux: 'pousser', delt_ant: 'pousser', delt_lat: 'pousser', triceps: 'pousser',
-  dos: 'tirer', delt_post: 'tirer', biceps: 'tirer', quadriceps: 'jambes', ischios: 'jambes', fessiers: 'jambes', mollets: 'jambes' };
+  dos: 'tirer', delt_post: 'tirer', biceps: 'tirer', quadriceps: 'jambes', ischios: 'jambes', fessiers: 'jambes', mollets: 'jambes',
+  trapezes: 'tirer', avant_bras: 'tirer', adducteurs: 'jambes', abdos: 'tronc', lombaires: 'tronc' };
 const moitie = m => GROUPE[m] === 'jambes' ? 'bas' : 'haut';
 export function alternatives(state, exerciseId, w) {
   const a = exDe(state, exerciseId);

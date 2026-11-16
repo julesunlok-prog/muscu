@@ -7,12 +7,16 @@ export const PROFILS = {
   iso_petit: { nom: 'Isolation petit muscle', repMin: 12, repMax: 20, reposSec: 90, rirCible: '0–1', pct: 0 },
 };
 
-export const MUSCLES = ['pectoraux', 'delt_ant', 'delt_lat', 'delt_post', 'triceps', 'dos', 'biceps', 'quadriceps', 'ischios', 'fessiers', 'mollets'];
+// Les 5 derniers (bibliothèque) ne s'affichent dans l'Analyse que si un de tes exercices les cible.
+export const MUSCLES = ['pectoraux', 'delt_ant', 'delt_lat', 'delt_post', 'triceps', 'dos', 'biceps', 'quadriceps', 'ischios', 'fessiers', 'mollets',
+  'abdos', 'trapezes', 'lombaires', 'adducteurs', 'avant_bras'];
+export const MUSCLES_EN_OPTION = new Set(MUSCLES.slice(11));
 
 export const NOM_MUSCLE = {
   pectoraux: 'Pectoraux', delt_ant: 'Deltoïde antérieur', delt_lat: 'Deltoïde latéral', delt_post: 'Deltoïde postérieur',
   triceps: 'Triceps', dos: 'Dos', biceps: 'Biceps', quadriceps: 'Quadriceps', ischios: 'Ischio-jambiers',
   fessiers: 'Fessiers', mollets: 'Mollets',
+  abdos: 'Abdominaux', trapezes: 'Trapèzes', lombaires: 'Lombaires', adducteurs: 'Adducteurs', avant_bras: 'Avant-bras',
 };
 
 export const MATERIELS = {
@@ -23,12 +27,20 @@ export const MATERIELS = {
   machine_pile: { nom: 'Machine à pile', pas: 5 },
   poulie: { nom: 'Poulie', pas: 5 },
   poids_du_corps: { nom: 'Poids du corps', pas: 2.5 },
+  kettlebell: { nom: 'Kettlebell', pas: 4 },
 };
 
 // Réglages par défaut d'un exercice pour un profil donné.
 export function defautsProfil(type) {
   const { repMin, repMax, reposSec, rirCible } = PROFILS[type];
   return { repMin, repMax, reposSec, rirCible };
+}
+
+// Exercice neuf avec les réglages du profil (création à la main ou depuis la bibliothèque).
+export function nouvelExercice({ nom, materiel, type, musclePrincipal, musclesSecondaires }) {
+  const id = nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
+  return { id, nom, materiel, type, musclePrincipal, musclesSecondaires, ...defautsProfil(type), series: 3,
+    pasMateriel: MATERIELS[materiel].pas, parMain: materiel === 'halteres', increment: null, note: '', sources: [], archive: false };
 }
 
 const arrondi = (x, pas) => Math.round(x / pas) * pas;

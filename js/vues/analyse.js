@@ -3,7 +3,7 @@
 import { volumeSemaine, volumePrevu, ciblesVolume, alerteEpaules, fatigue, stagnation, prediction, verifierPrediction, sessionsDe,
   volumeParSemaine, progressionMuscles, progressionExercicesMuscle, records, regularite, frequenceMuscles, equilibre,
   repartitionReps, repartitionRir, bilanMois, lundis } from '../moteur.js';
-import { MUSCLES, NOM_MUSCLE } from '../profils.js';
+import { MUSCLES, MUSCLES_EN_OPTION, NOM_MUSCLE } from '../profils.js';
 import { liensSources, explicationPrediction } from './exercices.js';
 import { barres, courbes, legende } from '../graph.js';
 import { esc, icon, fmtNum, fmtKg, fmtDate } from '../ui.js';
@@ -18,7 +18,9 @@ export function render(el, ctx) {
   const { state } = ctx, now = new Date();
   reelDemo = ctx.demo;
   const prio = state.settings.musclesPrioritaires;
-  const ordre = [...MUSCLES.filter(m => prio.includes(m)), ...MUSCLES.filter(m => !prio.includes(m))];
+  const vises = new Set(state.exercises.filter(e => !e.archive).map(e => e.musclePrincipal));
+  const affiches = MUSCLES.filter(m => !MUSCLES_EN_OPTION.has(m) || vises.has(m) || prio.includes(m));
+  const ordre = [...affiches.filter(m => prio.includes(m)), ...affiches.filter(m => !prio.includes(m))];
   const cibles = ciblesVolume(state);
   muscleChoisi ??= ordre[0];
   const puces = `<div class="puces" role="group" aria-label="Muscle">${ordre.map(m =>

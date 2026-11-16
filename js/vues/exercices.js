@@ -1,6 +1,8 @@
 // Exercices : liste, création, fiche (conseil, graphiques, preuves, réglages).
 import { conseil, sessionsDe, stagnation, prediction, verifierPrediction, e1rm, tonnage } from '../moteur.js';
-import { PROFILS, MUSCLES, NOM_MUSCLE, MATERIELS, defautsProfil } from '../profils.js';
+import { PROFILS, MUSCLES, NOM_MUSCLE, MATERIELS, defautsProfil, nouvelExercice } from '../profils.js';
+import { BIBLIOTHEQUE, chercher, depuisBibliotheque } from '../bibliotheque.js';
+import { norm } from '../strong-import.js';
 import { supprimerExercice } from '../store.js';
 import { lireNombre } from '../seance.js';
 import { SOURCES } from '../seed.js';
@@ -34,10 +36,64 @@ export function render(el, ctx, params) {
         <div style="min-width:0"><b>${esc(e.nom)}</b><div class="faint">${esc(NOM_MUSCLE[e.musclePrincipal])} · ${e.repMin}–${e.repMax} reps</div></div>
         ${st ? '<span class="badge warn">Stagne</span>' : ''}${icon('chevron', 'icone chevron')}</a></li>`;
     }).join('')}</ul></section>`;
-  el.onclick = e => { if (e.target.closest('[data-act="nouveau"]')) creer(ctx); };
+  el.onclick = e => { if (e.target.closest('[data-act="nouveau"]')) choisirDansBibliotheque(ctx, { titre: 'Nouvel exercice', choisi: id => ctx.aller('#/exercices/' + encodeURIComponent(id)) }); };
 }
 
-function creer(ctx) {
+// Feuille de recherche (nouvel exercice, ajout en séance ou au programme, remplacement) : barre de recherche + filtre par muscle.
+// Sections : les plus proches (remplacement), tes exercices (si mes), puis la bibliothèque par muscle ; une fiche de la bibliothèque devient un exercice à toi.
+export function choisirDansBibliotheque(ctx, { titre, mes = false, choisi, proches = [], exclure = [], icone = 'plus' }) {
+  let filtre = null;
+  const f = ouvrirFeuille({ titre, corps: `<div style="position:sticky;top:-1px;z-index:1;background:var(--surface);padding-top:1px">
+      <input class="form-control" type="search" data-cherche placeholder="Chercher : presse, curl, lat pulldown…" autocomplete="off" aria-label="Chercher un exercice" style="margin-bottom:8px">
+      <div class="puces" role="group" aria-label="Filtrer par muscle" data-puces></div></div>
+    <div data-resultats></div><button class="btn btn-texte btn-bloc" data-perso>Créer un exercice personnalisé…</button>` });
+  const ligne = (attr, x) => `<li><a class="liste-ligne" href="javascript:void 0" ${attr}><div style="min-width:0"><b>${esc(x.nom)}</b>
+    <div class="faint">${esc(NOM_MUSCLE[x.musclePrincipal])} · ${esc(MATERIELS[x.materiel].nom)}</div></div>${icon(icone, 'icone chevron')}</a></li>`;
+  const section = (titreS, l, attr) => l.length ? `<div class="label" style="margin-top:12px">${esc(titreS)}</div><ul class="liste">${l.map(x => ligne(attr(x), x)).join('')}</ul>` : '';
+  const lister = () => {
+    const q = f.querySelector('[data-cherche]').value, out = new Set(exclure);
+    const actifs = ctx.state.exercises.filter(e => !e.archive && !out.has(e.id)), miens = new Set(ctx.state.exercises.filter(e => !e.archive).map(e => norm(e.nom)));
+    const garde = x => !filtre || x.musclePrincipal === filtre;
+    const idsProches = new Set(proches.map(e => e.id));
+    const pr = chercher(q, proches.filter(e => !out.has(e.id))).filter(garde);
+    const moi = mes ? chercher(q, actifs.filter(e => !idsProches.has(e.id))).filter(garde).sort((a, b) => a.nom.localeCompare(b.nom)) : [];
+    const biblio = chercher(q).filter(b => garde(b) && !miens.has(norm(b.nom)));
+    f.querySelector('[data-resultats]').innerHTML = section('Les plus proches', pr, e => `data-id="${esc(e.id)}"`)
+      + section('Mes exercices', moi, e => `data-id="${esc(e.id)}"`)
+      + MUSCLES.map(m => section(`Bibliothèque · ${NOM_MUSCLE[m]}`, biblio.filter(b => b.musclePrincipal === m).sort((x, y) => x.nom.localeCompare(y.nom)),
+        b => `data-biblio="${BIBLIOTHEQUE.indexOf(b)}"`)).join('')
+      + (pr.length || moi.length || biblio.length ? '' : '<p class="faint">Aucun exercice trouvé.</p>');
+  };
+  // Puces dessinées une fois (la rangée garde son défilement) : les muscles qui ont au moins un exercice.
+  const dispo = new Set([...proches, ...(mes ? ctx.state.exercises.filter(e => !e.archive) : []), ...BIBLIOTHEQUE].map(x => x.musclePrincipal));
+  f.querySelector('[data-puces]').innerHTML = [[null, 'Tous'], ...MUSCLES.filter(m => dispo.has(m)).map(m => [m, NOM_MUSCLE[m]])]
+    .map(([m, nom]) => `<button type="button" data-filtre="${m ?? ''}" aria-pressed="${m === null}">${esc(nom)}</button>`).join('');
+  lister();
+  f.querySelector('[data-cherche]').addEventListener('input', lister);
+  f.addEventListener('click', ev => {
+    const p = ev.target.closest('button[data-filtre]');
+    if (p) {
+      filtre = p.dataset.filtre || null;
+      f.querySelectorAll('[data-filtre]').forEach(x => x.setAttribute('aria-pressed', x === p));
+      return lister();
+    }
+    if (ev.target.closest('button[data-perso]')) { fermerFeuille(f); return creer(ctx, choisi); }
+    const a = ev.target.closest('a[data-id], a[data-biblio]');
+    if (!a) return;
+    ev.preventDefault();
+    let id = a.dataset.id;
+    if (!id) {
+      const ex = depuisBibliotheque(BIBLIOTHEQUE[+a.dataset.biblio]);
+      ctx.maj(s => ({ ...s, exercises: [...s.exercises, ex] }), { rendre: false });
+      toast('Exercice ajouté à ta liste.');
+      id = ex.id;
+    }
+    fermerFeuille(f);
+    choisi(id);
+  });
+}
+
+function creer(ctx, apres = id => ctx.aller('#/exercices/' + encodeURIComponent(id))) {
   const f = ouvrirFeuille({ titre: 'Nouvel exercice', corps: formulaire({
     nom: '', materiel: 'halteres', type: 'iso', musclePrincipal: 'pectoraux', musclesSecondaires: [] }, true),
     pied: '<button class="btn btn-texte" data-fermer>Annuler</button><button class="btn btn-primary" data-p="ok">Créer</button>' });
@@ -45,12 +101,10 @@ function creer(ctx) {
   f.querySelector('[data-p="ok"]').onclick = () => {
     const v = lire(f);
     if (!v.nom) return champErreur(f.querySelector('#f-nom'), 'Donne un nom à l’exercice.');
-    const id = v.nom.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36);
-    const ex = { id, ...v, ...defautsProfil(v.type), series: 3, pasMateriel: MATERIELS[v.materiel].pas, parMain: v.materiel === 'halteres',
-      increment: null, note: '', sources: [], archive: false };
+    const ex = nouvelExercice(v);
     ctx.maj(s => ({ ...s, exercises: [...s.exercises, ex] }), { rendre: false });
     fermerFeuille(f); toast('Exercice créé.');
-    ctx.aller('#/exercices/' + encodeURIComponent(id));
+    apres(ex.id);
   };
 }
 

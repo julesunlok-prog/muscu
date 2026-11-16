@@ -54,9 +54,10 @@ export const EXERCICES_INITIAUX = [
   ex('multiflight-pecs', 'Multiflight Technogym (pectoraux)', 'poulie', 'iso', 'pectoraux', ['delt_ant'],
     'Poulies réglables en mode pectoraux (écarté) : isolation des pectoraux, comme le pec deck, avec la charge réglée à la pile. Machines, poulies et poids libres font grossir le muscle autant : choisis selon ton confort.',
     ['S30'], { catalogue: 3 }),
-  ex('dips', 'Dips (lestés ou poids du corps)', 'poids_du_corps', 'poly_haut', 'pectoraux', ['triceps', 'delt_ant'],
-    'Saisis le lest ajouté : 0 kg = poids du corps. Conseil de technique : buste penché en avant pour viser les pectoraux, descente contrôlée sans forcer l’avant de l’épaule. Progresse d’abord en reps au poids du corps, puis ajoute du lest.',
-    [], { catalogue: 3 }),
+  // corrige: 5 — d'abord « Dips (lestés ou poids du corps) » : renommée quand la version triceps est arrivée.
+  ex('dips', 'Dips pectoraux (lestés ou poids du corps)', 'poids_du_corps', 'poly_haut', 'pectoraux', ['triceps', 'delt_ant'],
+    'Saisis le lest ajouté : 0 kg = poids du corps. Conseil de technique : buste penché en avant et coudes un peu écartés pour viser les pectoraux, descente contrôlée jusqu’à sentir l’étirement sans forcer l’avant de l’épaule. Progresse d’abord en reps au poids du corps, puis ajoute du lest. Suivi à part des dips triceps : ce n’est pas le même mouvement.',
+    [], { catalogue: 3, corrige: 5 }),
   ex('chest-press-hammer-incline', 'Chest press Hammer Strength incliné (assis)', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
     'Développé incliné guidé, assis : le haut des pectoraux grossit davantage en incliné qu’à plat (étude chez des débutants). Machines et poids libres font grossir le muscle autant. Fait doublon avec la presse inclinée et le développé incliné Smith : garde-en un ou alterne-les.',
     ['S31', 'S30'], { catalogue: 3 }),
@@ -67,6 +68,10 @@ export const EXERCICES_INITIAUX = [
   ex('chest-press-debout', 'Standing chest press gym80', 'machine_plaques', 'poly_haut', 'pectoraux', ['delt_ant', 'triceps'],
     'Développé debout guidé, sur la machine gym80 chargée avec des disques : la machine guide la trajectoire. Machines et poids libres font grossir le muscle autant à effort égal.',
     ['S30'], { catalogue: 3, corrige: 4 }),
+  // Catalogue 5 (2026-11-16) : dips séparés en pectoraux / triceps à la demande de Jules.
+  ex('dips-triceps', 'Dips triceps (lestés ou poids du corps)', 'poids_du_corps', 'poly_haut', 'triceps', ['pectoraux', 'delt_ant'],
+    'Saisis le lest ajouté : 0 kg = poids du corps. Conseil de technique : buste droit et coudes serrés le long du corps pour viser les triceps. Le bras reste le long du corps, donc la longue portion du triceps est peu étirée, comme au pushdown : l’extension au-dessus de la tête reste l’exercice triceps le plus étayé pour la faire grossir. Les dips sont un bon polyarticulaire lourd en complément.',
+    ['S8'], { catalogue: 5 }),
 ];
 export const CATALOGUE = Math.max(...EXERCICES_INITIAUX.map(e => Math.max(e.catalogue ?? 1, e.corrige ?? 1)));
 

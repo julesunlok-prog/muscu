@@ -1,6 +1,7 @@
 // Réglages : thème, muscles prioritaires, cibles de volume, sauvegarde, import Strong, sources.
 import { exporterJSON, importerJSON } from '../store.js';
 import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts } from '../strong-import.js';
+import { BIBLIOTHEQUE, correspondanceAvecBibliotheque, creerDepuisCorrespondance } from '../bibliotheque.js';
 import { ciblesVolume } from '../moteur.js';
 import { lireNombre } from '../seance.js';
 import { activer, tester, desactiver, etat } from '../alarme.js';
@@ -45,9 +46,9 @@ export function render(el, ctx) {
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-secondary" data-act="exporter">${icon('telecharger')}Exporter la sauvegarde</button>
         <label class="btn btn-secondary" style="margin:0">${icon('importer')}Importer une sauvegarde<input type="file" accept=".json,application/json" data-fichier="sauvegarde" class="hidden"></label>
-        <label class="btn btn-secondary" style="margin:0">${icon('importer')}Importer depuis Strong (.csv)<input type="file" accept=".csv,text/csv" data-fichier="strong" class="hidden"></label>
+        <label class="btn btn-secondary" style="margin:0">${icon('importer')}Importer depuis Strong ou Hevy (.csv)<input type="file" accept=".csv,text/csv" data-fichier="strong" class="hidden"></label>
       </div>
-      <p class="faint" style="margin:10px 0 0">Dans Strong : Profil → Réglages → Export Strong Data.</p>
+      <p class="faint" style="margin:10px 0 0">Dans Strong : Profil → Réglages → Export Strong Data. Dans Hevy : Profil → Réglages → Exporter les données (export des séances).</p>
     </section>
 
     <section class="card">
@@ -164,19 +165,23 @@ function importerStrong(ctx, texte) {
   try { ({ lignes } = lireStrong(texte)); } catch (e) { return toast(e.message, 'error'); }
   if (!lignes.length) return toast('Aucune série avec charge et reps dans ce fichier.', 'error');
   const noms = nomsExercicesStrong(lignes);
-  const auto = correspondanceAuto(noms, ctx.state);
+  const auto = correspondanceAvecBibliotheque(noms, ctx.state, correspondanceAuto(noms, ctx.state));
   const exos = ctx.state.exercises.filter(e => !e.archive).sort((a, b) => a.nom.localeCompare(b.nom));
+  const biblio = BIBLIOTHEQUE.map((b, i) => [i, b]).sort((x, y) => x[1].nom.localeCompare(y[1].nom));
   const f = ouvrirFeuille({
     titre: 'Associer les exercices',
-    corps: `<p class="faint" style="margin-top:0">Pour chaque exercice Strong, choisis l’exercice de l’app correspondant. « Ignorer » ne l’importe pas.</p>
+    corps: `<p class="faint" style="margin-top:0">Pour chaque exercice importé, choisis l’exercice de l’app correspondant, ou un exercice de la bibliothèque à créer. « Ignorer » ne l’importe pas.</p>
       ${noms.map((n, i) => `<div class="form-group"><label for="m${i}">${esc(n)}</label><select id="m${i}" class="form-control" data-nom="${esc(n)}">
-        <option value="">Ignorer</option>${exos.map(e => `<option value="${esc(e.id)}" ${auto[n] === e.id ? 'selected' : ''}>${esc(e.nom)}</option>`).join('')}</select></div>`).join('')}`,
+        <option value="">Ignorer</option><optgroup label="Mes exercices">${exos.map(e => `<option value="${esc(e.id)}" ${auto[n] === e.id ? 'selected' : ''}>${esc(e.nom)}</option>`).join('')}</optgroup>
+        <optgroup label="Créer depuis la bibliothèque">${biblio.map(([j, b]) => `<option value="biblio:${j}" ${auto[n] === 'biblio:' + j ? 'selected' : ''}>${esc(b.nom)}</option>`).join('')}</optgroup></select></div>`).join('')}`,
     pied: '<button class="btn btn-texte" data-fermer>Annuler</button><button class="btn btn-primary" data-p="ok">Importer</button>',
   });
   f.querySelector('[data-p="ok"]').onclick = () => {
-    const corr = Object.fromEntries([...f.querySelectorAll('select[data-nom]')].map(s => [s.dataset.nom, s.value || null]));
-    const ws = versWorkouts(lignes, corr, ctx.state);
-    ctx.maj(s => ({ ...s, workouts: [...s.workouts, ...ws].sort((a, b) => a.debut.localeCompare(b.debut)) }));
+    const choix = Object.fromEntries([...f.querySelectorAll('select[data-nom]')].map(s => [s.dataset.nom, s.value || null]));
+    const { corr, nouveaux } = creerDepuisCorrespondance(choix);
+    const ws = versWorkouts(lignes, corr, { ...ctx.state, exercises: [...ctx.state.exercises, ...nouveaux] });
+    const utiles = nouveaux.filter(e => ws.some(w => w.entrees.some(x => x.exerciseId === e.id)));
+    ctx.maj(s => ({ ...s, exercises: [...s.exercises, ...utiles], workouts: [...s.workouts, ...ws].sort((a, b) => a.debut.localeCompare(b.debut)) }));
     fermerFeuille(f);
     toast(ws.length ? `${ws.length} séance${ws.length > 1 ? 's' : ''} importée${ws.length > 1 ? 's' : ''}.` : 'Rien de nouveau à importer.', ws.length ? 'success' : 'info');
   };

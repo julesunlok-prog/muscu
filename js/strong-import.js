@@ -1,4 +1,4 @@
-// Import de l'export CSV de Strong (Réglages → Export Strong Data).
+// Import de l'export CSV de Strong (Réglages → Export Strong Data) ou de Hevy (Profil → Réglages → Exporter les données).
 
 // CSV avec guillemets ; séparateur détecté sur la ligne d'en-tête ("," ou ";" selon la langue).
 function parseCSV(text) {
@@ -41,6 +41,11 @@ function versDate(s) {
   if (m) return new Date(+m[1], m[2] - 1, +m[3], +(m[4] ?? 0), +(m[5] ?? 0));
   m = s.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})[ ,]*(\d{1,2})?:?(\d{2})?/);
   if (m) return new Date(+m[3], m[2] - 1, +m[1], +(m[4] ?? 0), +(m[5] ?? 0));
+  // Hevy : "16 Nov 2026, 14:28" (mois en anglais ou en français)
+  m = s.match(/^(\d{1,2}) ([a-zéû]{3,})\.? (\d{4}),? (\d{1,2}):(\d{2})/i);
+  const mois = m && ['jan', 'feb|fev', 'mar', 'apr|avr', 'may|mai', 'jun|juin', 'jul|juil', 'aug|aou', 'sep', 'oct', 'nov', 'dec']
+    .findIndex(x => x.split('|').some(p => norm(m[2]).startsWith(p)));
+  if (m && mois >= 0) return new Date(+m[3], mois, +m[1], +m[4], +m[5]);
   const d = new Date(s);
   return isNaN(d) ? null : d;
 }
@@ -50,24 +55,26 @@ export function lireStrong(text) {
   if (!rows.length) throw new Error('Fichier vide.');
   const H = rows[0];
   const c = {
-    date: col(H, 'date'),
-    seance: col(H, 'workout name', "nom de l'entrainement", 'nom de la seance', 'entrainement'),
-    exercice: col(H, 'exercise name', "nom de l'exercice", 'exercice'),
+    date: col(H, 'date', 'start_time'),
+    seance: col(H, 'workout name', "nom de l'entrainement", 'nom de la seance', 'entrainement', 'title'),
+    exercice: col(H, 'exercise name', "nom de l'exercice", 'exercice', 'exercise_title'),
+    typeSerie: col(H, 'set_type'),
     ordre: col(H, 'set order', 'ordre'),
     kg: col(H, 'weight', 'poids'),
     reps: col(H, 'reps', 'repetitions'),
     rpe: col(H, 'rpe'),
   };
   if (c.date < 0 || c.exercice < 0 || c.kg < 0 || c.reps < 0)
-    throw new Error('Colonnes introuvables : est-ce bien l’export CSV de Strong ?');
+    throw new Error('Colonnes introuvables : est-ce bien l’export CSV de Strong ou de Hevy ?');
   const lignes = [];
   for (const r of rows.slice(1)) {
-    const kg = num(r[c.kg]), reps = num(r[c.reps]), date = String(r[c.date] ?? '').trim();
+    // Hevy laisse le poids vide au poids du corps : 0 kg, comme Strong.
+    const reps = num(r[c.reps]), kg = num(r[c.kg]) ?? (reps ? 0 : null), date = String(r[c.date] ?? '').trim();
     if (kg == null || !reps || !versDate(date)) continue; // cardio (0 rep) et lignes vides ; 0 kg = poids du corps
     lignes.push({
       date, seance: c.seance >= 0 ? String(r[c.seance]).trim() : 'Séance', exercice: String(r[c.exercice]).trim(),
       kg, reps, rpe: c.rpe >= 0 ? num(r[c.rpe]) : null,
-      echauffement: c.ordre >= 0 && String(r[c.ordre]).trim().toUpperCase() === 'W',
+      echauffement: (c.ordre >= 0 && String(r[c.ordre]).trim().toUpperCase() === 'W') || (c.typeSerie >= 0 && norm(r[c.typeSerie]) === 'warmup'),
     });
   }
   return { lignes };

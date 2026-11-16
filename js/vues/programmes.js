@@ -1,6 +1,7 @@
 // Écran Entraînement : programmes, « Débuter », séance vide, édition d'un programme.
 import { demarrer } from '../seance.js';
 import { NOM_MUSCLE } from '../profils.js';
+import { choisirDansBibliotheque } from './exercices.js';
 import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
@@ -79,7 +80,6 @@ function apercu(ctx, t, E) {
 
 function editer(ctx, original, nouveau = false) {
   let t = structuredClone(original);
-  const actifs = () => ctx.state.exercises.filter(e => !e.archive).sort((a, b) => a.nom.localeCompare(b.nom));
   const nomEx = id => ctx.state.exercises.find(e => e.id === id)?.nom ?? '?';
   const f = ouvrirFeuille({
     titre: nouveau ? 'Nouveau programme' : 'Modifier le programme',
@@ -102,21 +102,18 @@ function editer(ctx, original, nouveau = false) {
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="ss" aria-label="Grouper en superset avec le suivant">SS</button>
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="retirer" aria-label="Retirer">${icon('close')}</button>
         </div></li>`).join('') || '<li class="faint" style="padding:8px 0">Aucun exercice pour l’instant.</li>'}</ul>
-      <div class="form-group" style="margin-top:12px"><label for="ajout-ex">Ajouter un exercice</label>
-        <select id="ajout-ex" class="form-control"><option value="">Choisir…</option>${actifs().map(e => `<option value="${esc(e.id)}">${esc(e.nom)}</option>`).join('')}</select></div>
+      <button type="button" class="ajouter" data-a="ajouter" style="margin-top:12px">+ Ajouter un exercice</button>
       <p class="faint">« SS » groupe l’exercice avec le suivant en superset : le repos démarre après le dernier des deux.</p>`;
   };
   dessiner();
   corps.addEventListener('input', e => { if (e.target.id === 'nom-prog') t.nom = e.target.value; });
-  corps.addEventListener('change', e => {
-    if (e.target.id !== 'ajout-ex' || !e.target.value) return;
-    const ex = ctx.state.exercises.find(x => x.id === e.target.value);
-    t.items.push({ exerciseId: ex.id, series: ex.series, supersetGroupe: null });
-    dessiner();
-  });
   corps.addEventListener('click', e => {
-    const b = e.target.closest('[data-a]');
+    const b = e.target.closest('button[data-a]');
     if (!b) return;
+    if (b.dataset.a === 'ajouter') return choisirDansBibliotheque(ctx, { titre: 'Ajouter un exercice', mes: true, choisi: id => {
+      t.items.push({ exerciseId: id, series: ctx.state.exercises.find(x => x.id === id).series, supersetGroupe: null });
+      dessiner();
+    } });
     const i = Number(b.dataset.i), it = t.items[i];
     if (b.dataset.a === 'plus') it.series = Math.min(10, it.series + 1);
     if (b.dataset.a === 'moins') it.series = Math.max(1, it.series - 1);

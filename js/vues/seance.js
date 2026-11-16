@@ -7,6 +7,7 @@ import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie,
 import { recupererAvantFin, attendreFin, etatMontre } from '../montre.js';
 import { conseil, sessionsDe, e1rm, tonnage } from '../moteur.js';
 import * as programmes from './programmes.js';
+import { choisirDansBibliotheque } from './exercices.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtChrono, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, choisir, toast,
   champDuree, lireDuree, valeurDuree } from '../ui.js';
 
@@ -397,33 +398,16 @@ function menuExercice(ctx, ei) {
 function choisirRemplacant(ctx, ei) {
   const w = ctx.state.enCours, e = w.entrees[ei];
   if (e.series.every(s => s.faite)) return toast('Toutes les séries sont faites.', 'info');
-  const proches = alternatives(ctx.state, e.exerciseId, w), ids = new Set(proches.map(x => x.id));
-  const autres = ctx.state.exercises.filter(x => !x.archive && !ids.has(x.id) && x.id !== e.exerciseId).sort((a, b) => a.nom.localeCompare(b.nom));
-  const ligne = x => `<li><a class="liste-ligne" href="javascript:void 0" data-id="${esc(x.id)}"><b>${esc(x.nom)}</b>${icon('echange', 'icone chevron')}</a></li>`;
-  const f = ouvrirFeuille({ titre: `Remplacer ${e.nomExercice}`, corps: `${proches.length ? `<div class="label">Les plus proches</div><ul class="liste">${proches.map(ligne).join('')}</ul>` : ''}
-    <div class="label" style="margin-top:12px">Tous les exercices</div><ul class="liste">${autres.map(ligne).join('')}</ul>` });
-  f.addEventListener('click', ev => {
-    const id = ev.target.closest('[data-id]')?.dataset.id;
-    if (!id) return;
-    ev.preventDefault();
-    ctx.maj(s => ({ ...s, enCours: remplacerExercice(s.enCours, s, ei, id) }));
-    fermerFeuille(f);
-  });
+  choisirDansBibliotheque(ctx, { titre: `Remplacer ${e.nomExercice}`, mes: true, icone: 'echange',
+    proches: alternatives(ctx.state, e.exerciseId, w), exclure: [e.exerciseId],
+    choisi: id => ctx.maj(s => ({ ...s, enCours: remplacerExercice(s.enCours, s, ei, id) })) });
 }
 
 function choisirExercice(ctx) {
-  const liste = ctx.state.exercises.filter(e => !e.archive).sort((a, b) => a.nom.localeCompare(b.nom));
-  const f = ouvrirFeuille({ titre: 'Ajouter un exercice', corps: `<ul class="liste">${liste.map(e =>
-    `<li><a class="liste-ligne" href="javascript:void 0" data-id="${esc(e.id)}"><b>${esc(e.nom)}</b>${icon('plus', 'icone chevron')}</a></li>`).join('')}</ul>
-    <a class="btn btn-texte btn-bloc" href="#/exercices" data-fermer>Créer un exercice…</a>` });
-  f.addEventListener('click', e => {
-    const id = e.target.closest('[data-id]')?.dataset.id;
-    if (!id) return;
-    e.preventDefault();
+  choisirDansBibliotheque(ctx, { titre: 'Ajouter un exercice', mes: true, choisi: id => {
     ctx.maj(s => ({ ...s, enCours: ajouterExercice(s.enCours, s, id) }));
-    fermerFeuille(f);
     window.scrollTo({ top: document.body.scrollHeight });
-  });
+  } });
 }
 
 async function finir(ctx) {
