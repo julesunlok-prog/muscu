@@ -407,16 +407,73 @@ details.explication p, details.explication ul { margin: 0 0 8px; }
 .bandeau-demo b { color: var(--text); }
 .bandeau-demo b { font-weight: 600; }
 
-/* ---------- Simulation « Analyser mes séances » ---------- */
+/* ---------- Simulation « Analyser mes séances » (présentation par séance) ---------- */
 .btn-lien { background: none; border: 0; padding: 0; font: inherit; color: var(--text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; position: relative; }
-.sim-ch { padding: 4px 0 6px; border-bottom: 1px solid var(--rule); transition: opacity .15s; }
-.sim-ch.off { opacity: .5; }
-.sim-ch .case { align-items: flex-start; padding-top: 10px; min-height: 0; }
-.sim-ch .case input { margin-top: 1px; flex: none; }
-.sim-chiffres { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; font-size: 13px; color: var(--muted); padding-left: 28px; }
-.sim-ch .explication, .sim-ch > .faint { padding-left: 28px; }
-.sim-note { font-size: 13px; margin-top: 6px; padding: 8px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn-ink); }
-.sim-prog { margin-bottom: 14px; }
-.warn-txt { color: var(--warn-ink); font-weight: 600; }
 .toast-action { margin-left: auto; min-height: 32px; padding: 0 10px; }
-.sim-gain { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+.feuille.haute .feuille-corps { background: var(--ground); }
+.sim-carte { background: var(--surface); border-radius: var(--r-lg); padding: 14px; margin-bottom: 10px; }
+.sim-titre { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+.sim-defile { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px 2px; scroll-padding: 14px; }
+.sim-defile::-webkit-scrollbar { display: none; }
+.sim-m { flex: none; min-width: 84px; padding: 8px 11px; border-radius: 14px; background: var(--raised); cursor: pointer; transition: background var(--tr), color var(--tr); }
+.sim-m > span { display: block; font-size: 11px; }
+.sim-m b { display: block; font-size: 16px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin: 1px 0; }
+.sim-m.ok b::after { content: ' ✓'; color: var(--pos); font-size: 12px; }
+.sim-m.court b { color: var(--warn-ink); }
+.sim-m.sel { background: var(--btn); color: var(--btn-ink); }
+.sim-m.sel .faint, .sim-m.sel.court b { color: inherit; opacity: .75; }
+.sim-aide { margin: 10px 0 0; font-size: 12px; }
+.sim-gain { display: inline-block; background: var(--pos-bg); color: var(--pos-ink); border-radius: var(--pilule); padding: 2px 9px; font-weight: 700; font-size: 12px; margin: 0 4px 4px 0; }
+.sim-gain.neg { background: var(--warn-bg); color: var(--warn-ink); }
+.sim-note { font-size: 12px; margin: 0 0 10px; padding: 9px 12px; border-radius: 14px; background: var(--warn-bg); color: var(--warn-ink); }
+.sim-note .sources { color: inherit; }
+.sim-onglets { margin: 0 0 10px; padding: 0 14px; }
+.sim-onglet { flex: 1 0 96px; padding: 8px 11px; border-radius: 14px; background: var(--side); cursor: pointer; }
+.sim-onglet b { display: block; font-size: 14px; }
+.sim-onglet span { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sim-onglet.on { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.sim-onglet.warn span { color: var(--warn-ink); font-weight: 600; }
+.sim-rail { position: relative; height: 8px; border-radius: var(--pilule); background: var(--track); margin: 20px 0 6px; }
+.sim-rail i { position: absolute; top: 0; bottom: 0; border-radius: var(--pilule); }
+.sim-rail s { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); }
+.sim-lim { position: absolute; top: -19px; transform: translateX(-50%); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.sim-rail .base, .sim-legende i.base { background: color-mix(in srgb, var(--data) 40%, var(--track)); }
+.sim-rail .ajout, .sim-legende i.ajout { background: var(--data); }
+.sim-legende { display: flex; gap: 14px; font-size: 11px; color: var(--muted); }
+.sim-legende i { display: inline-block; width: 10px; height: 6px; border-radius: 3px; margin-right: 5px; vertical-align: 1px; }
+.sim-liste { margin-top: 8px; }
+.sim-ligne { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--rule); }
+.sim-ligne[role="button"] { cursor: pointer; }
+.sim-ligne.calme b { font-weight: 500; color: var(--muted); }
+.sim-ligne.off .sim-ex { opacity: .55; }
+.sim-trait { flex: none; align-self: stretch; width: 3px; border-radius: 3px; }
+.sim-trait.on { background: var(--pos); } .sim-trait.nv { background: var(--data); }
+.sim-ex { flex: 1; min-width: 0; font-size: 14px; }
+.sim-ex b { display: block; font-weight: 600; }
+.sim-ex .faint { display: block; font-size: 12px; font-variant-numeric: tabular-nums; }
+.vert { color: var(--pos-ink); font-weight: 700; }
+.sim-pour-l { display: flex; gap: 4px; margin-top: 4px; }
+.sim-pour { font-size: 11px; font-weight: 600; background: var(--chip); border-radius: var(--pilule); padding: 1px 8px; }
+.sim-ss { border-left: 2px solid var(--control); padding-left: 10px; margin: 4px 0 4px 2px; }
+.sim-ss.off { border-left-style: dashed; }
+.sim-ss-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.sim-ss-tete[role="button"] { cursor: pointer; }
+.sim-ss .sim-ligne:first-of-type { border-top: 0; }
+.sim-detail { background: var(--raised); border-radius: 12px; padding: 10px 12px; margin: 0 0 10px 13px; font-size: 13px; line-height: 1.45; animation: simOuvre .2s var(--out); }
+@keyframes simOuvre { from { opacity: 0; transform: translateY(-4px); } }
+.sim-detail p { margin: 4px 0 6px; }
+.sim-src { font-size: 12px; color: var(--muted); }
+.sim-src .sources { display: inline; margin-left: 6px; }
+.sim-switch { position: relative; flex: none; width: 44px; height: 26px; margin: 0; cursor: pointer; }
+.sim-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.sim-switch span { position: absolute; inset: 0; border-radius: var(--pilule); background: var(--control); transition: background var(--tr); }
+.sim-switch span::after { content: ''; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s var(--out); }
+.sim-switch input:checked + span { background: var(--pos); }
+.sim-switch input:checked + span::after { transform: translateX(18px); }
+.sim-switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sim-methode { margin: 4px 2px 8px; }
+.sim-pied { align-items: center; }
+.sim-pied .btn { flex: none; padding-inline: 24px; }
+.sim-resume { flex: 1; min-width: 0; font-size: 13px; }
+.sim-resume b, .sim-resume span { display: block; }
+.sim-resume span { font-size: 12px; }

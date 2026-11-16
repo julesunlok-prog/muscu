@@ -129,7 +129,8 @@ export function analyser(state, now = new Date()) {
   const E0 = exDe(state), prevu = volumePrevu(state);
   const fact = Object.fromEntries(state.templates.map(t => [t.id, facteur(state, t)]));
   const fait = Object.fromEntries(MUSCLES.map(m => [m, 0]));
-  for (const d of lundis(now, 4)) for (const [m, v] of Object.entries(volumeSemaine(state, d.toISOString()))) fait[m] += v / 4;
+  // 4 dernières semaines complètes : la semaine en cours, entamée, ferait croire qu'on en fait moins que prévu.
+  for (const d of lundis(new Date(now.getTime() - 7 * JOUR), 4)) for (const [m, v] of Object.entries(volumeSemaine(state, d.toISOString()))) fait[m] += v / 4;
   const premier = state.workouts.reduce((min, w) => w.debut < min ? w.debut : min, now.toISOString());
   const historique = now.getTime() - Date.parse(premier) >= 28 * JOUR;
   const vises = new Set([...prio, ...state.templates.flatMap(t => t.items.map(i => E0[i.exerciseId]?.musclePrincipal)).filter(Boolean)]);
@@ -138,7 +139,7 @@ export function analyser(state, now = new Date()) {
     prioritaire: prio.includes(m), vise: vises.has(m), moinsQuePrevu: historique && prevu[m] > 0 && fait[m] < 0.8 * prevu[m],
     sansPrincipal: !state.templates.some(t => t.items.some(i => E0[i.exerciseId]?.musclePrincipal === m)) }));
   const D = Object.fromEntries(diagnostic.map(d => [d.muscle, d]));
-  const notes = diagnostic.filter(d => d.moinsQuePrevu && d.statut === 'retard').map(d => ({ type: 'regularite', muscle: d.muscle }));
+  const notes = diagnostic.filter(d => d.vise && d.moinsQuePrevu && d.statut === 'retard').map(d => ({ type: 'regularite', muscle: d.muscle }));
   const ordre = MUSCLES.filter(m => vises.has(m) && D[m].statut === 'retard' && !D[m].moinsQuePrevu)
     .sort((a, b) => prio.includes(b) - prio.includes(a) || prevu[a] / cibles[a] - prevu[b] / cibles[b]);
 
