@@ -121,4 +121,6 @@ export const SOURCES = {
   S29: { titre: 'Saeterbakken & Fimland 2013 — développé épaules assis/debout, barre/haltères (EMG, JSCR)', url: 'https://pubmed.ncbi.nlm.nih.gov/23096062/' },
   S30: { titre: 'Haugen et al. 2023 — machines vs poids libres : même hypertrophie (méta-analyse)', url: 'https://doi.org/10.1186/s13102-023-00713-4' },
   S31: { titre: 'Chaves et al. 2020 — développé incliné : plus de croissance du haut des pectoraux (Int J Exerc Sci)', url: 'https://pubmed.ncbi.nlm.nih.gov/32922646/' },
+  S32: { titre: 'Remmert, Pelland et al. 2025 (préprint) — au-delà de ~11 séries d’un muscle dans une même séance, plus de gain détectable', url: 'https://doi.org/10.51224/SRXIV.537' },
+  S33: { titre: 'Zhang et al. 2025 — supersets : même croissance et même force, en moins de temps (méta-analyse)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12011898/' },
 };

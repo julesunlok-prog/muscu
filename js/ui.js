@@ -40,16 +40,17 @@ export const icon = (nom, cls = 'icone') =>
   `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${PATHS[nom]}"/></svg>`;
 
 let pile = null;
-export function toast(msg, type = 'success') {
+// action facultative : { libelle, fn } → bouton dans le toast (ex. « Annuler »), affiché 8 s.
+export function toast(msg, type = 'success', action = null) {
   pile ??= document.body.appendChild(Object.assign(document.createElement('div'), { className: 'toasts', role: 'status' }));
   if (type === 'success') pile.querySelectorAll('.toast.error').forEach(t => t.remove());
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span class="pastille">${icon(type === 'error' ? 'alerte' : type === 'info' ? 'info' : 'check', 'icone')}</span><span>${esc(msg)}</span>`;
+  t.innerHTML = `<span class="pastille">${icon(type === 'error' ? 'alerte' : type === 'info' ? 'info' : 'check', 'icone')}</span><span>${esc(msg)}</span>${action ? `<button class="btn btn-texte toast-action" type="button">${esc(action.libelle)}</button>` : ''}`;
   const fermer = () => { t.classList.add('sort'); setTimeout(() => t.remove(), 200); };
-  t.onclick = fermer;
+  t.onclick = e => { if (action && e.target.closest('.toast-action')) action.fn(); fermer(); };
   pile.appendChild(t);
-  setTimeout(fermer, type === 'error' ? 6000 : 3000);
+  setTimeout(fermer, action ? 8000 : type === 'error' ? 6000 : 3000);
 }
 
 const voile = () => document.body.appendChild(Object.assign(document.createElement('div'), { className: 'voile' }));

@@ -38,6 +38,10 @@ export function render(el, ctx) {
         <label class="case" style="flex:1"><input type="checkbox" data-prio="${m}" ${settings.musclesPrioritaires.includes(m) ? 'checked' : ''}>${esc(NOM_MUSCLE[m])}</label>
         <input class="form-control" style="width:72px;height:36px;text-align:center" inputmode="numeric" data-cible="${m}"
           value="${settings.ciblesVolume[m] ?? ''}" placeholder="${cibles[m]}" aria-label="Cible ${esc(NOM_MUSCLE[m])}"></div>`).join('')}
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+        <label for="duree-max" style="flex:1;font-size:14px;margin:0">Durée max d’une séance (min)<span class="faint" style="display:block;font-size:12px">Utilisée par « Analyser mes séances ». 80 par défaut.</span></label>
+        <input id="duree-max" class="form-control" style="width:72px;height:36px;text-align:center" inputmode="numeric" data-duree-max
+          value="${settings.dureeMax ?? ''}" placeholder="80"></div>
     </section>
 
     <section class="card">
@@ -98,6 +102,10 @@ export function render(el, ctx) {
       const c = { ...s.settings.ciblesVolume }, n = lireNombre(i.value);
       if (n == null) delete c[i.dataset.cible]; else c[i.dataset.cible] = n;
       return { ...s, settings: { ...s.settings, ciblesVolume: c } };
+    });
+    if ('dureeMax' in i.dataset) ctx.maj(s => {
+      const n = lireNombre(i.value), { dureeMax, ...reste } = s.settings;
+      return { ...s, settings: n == null ? reste : { ...reste, dureeMax: Math.min(180, Math.max(30, Math.round(n))) } };
     });
     if (i.dataset.fichier && i.files[0]) {
       const texte = await i.files[0].text();

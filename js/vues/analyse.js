@@ -5,6 +5,7 @@ import { volumeSemaine, volumePrevu, ciblesVolume, alerteEpaules, fatigue, stagn
   repartitionReps, repartitionRir, bilanMois, lundis } from '../moteur.js';
 import { MUSCLES, MUSCLES_EN_OPTION, NOM_MUSCLE } from '../profils.js';
 import { liensSources, explicationPrediction } from './exercices.js';
+import { ouvrirSimulation } from './simulation.js';
 import { barres, courbes, legende } from '../graph.js';
 import { esc, icon, fmtNum, fmtKg, fmtDate } from '../ui.js';
 
@@ -28,6 +29,8 @@ export function render(el, ctx) {
 
   el.innerHTML = `<div class="page-header"><h1 class="page-title">Analyse</h1></div>
     ${bilan(state, now)}
+    ${state.templates.length ? carte('Analyser mes séances', `<p class="faint" style="margin:0 0 12px">Compare tes programmes à tes cibles de séries et simule des améliorations sourcées, avec le gain estimé et la durée de chaque séance. Rien ne change sans ton accord.</p>
+      <button class="btn btn-secondary btn-bloc" data-simuler>Analyser mes séances</button>`) : ''}
     ${alertes(state, now)}
     ${volume(state, ordre, cibles, prio)}
     ${carte('Volume par semaine', `${puces}${barres(volumeParSemaine(state, muscleChoisi, now, 12), { cible: cibles[muscleChoisi], titre: 'Séries par semaine' })}
@@ -43,6 +46,7 @@ export function render(el, ctx) {
     ${rir(state, now)}`;
 
   el.onclick = e => {
+    if (e.target.closest('button[data-simuler]')) return ouvrirSimulation(ctx);
     const b = e.target.closest('[data-mode], [data-muscle]');
     if (!b) return;
     if (b.dataset.mode) mode = b.dataset.mode;
@@ -64,7 +68,7 @@ function bilan(state, now) {
       <div class="kpi"><div class="kpi-label">Force moyenne</div><div class="kpi-value">${b.progressionForce == null ? '—' : `${signe(b.progressionForce)} <small>%</small>`}</div></div>
     </div>
     <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6">
-      ${b.retard ? `<li>Muscle le plus en retard : <b>${esc(NOM_MUSCLE[b.retard.muscle])}</b>, ${fmtNum(b.retard.ratio * cibles[b.retard.muscle])} séries par semaine pour une cible de ${cibles[b.retard.muscle]}. Ajoute-lui des séries.</li>` : ''}
+      ${b.retard ? `<li>Muscle le plus en retard : <b>${esc(NOM_MUSCLE[b.retard.muscle])}</b>, ${fmtNum(b.retard.ratio * cibles[b.retard.muscle])} séries par semaine pour une cible de ${cibles[b.retard.muscle]}. Ajoute-lui des séries : <button class="btn-lien" data-simuler>Analyser mes séances</button>.</li>` : ''}
       ${b.stagnations.length ? `<li>Stagnation sur ${b.stagnations.map(esc).join(', ')} : suis le conseil de recul de charge de chaque exercice.</li>` : '<li>Aucune stagnation.</li>'}
       <li>${fmtNum(b.volume, 0)} kg soulevés sur les 30 derniers jours.</li>
     </ul>`, '<span class="faint">30 derniers jours</span>');

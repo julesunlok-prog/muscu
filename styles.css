@@ -406,3 +406,17 @@ details.explication p, details.explication ul { margin: 0 0 8px; }
   border-radius: var(--pilule); background: var(--surface); color: var(--muted); font-size: 13px; }
 .bandeau-demo b { color: var(--text); }
 .bandeau-demo b { font-weight: 600; }
+
+/* ---------- Simulation « Analyser mes séances » ---------- */
+.btn-lien { background: none; border: 0; padding: 0; font: inherit; color: var(--text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; position: relative; }
+.sim-ch { padding: 4px 0 6px; border-bottom: 1px solid var(--rule); transition: opacity .15s; }
+.sim-ch.off { opacity: .5; }
+.sim-ch .case { align-items: flex-start; padding-top: 10px; min-height: 0; }
+.sim-ch .case input { margin-top: 1px; flex: none; }
+.sim-chiffres { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: space-between; font-size: 13px; color: var(--muted); padding-left: 28px; }
+.sim-ch .explication, .sim-ch > .faint { padding-left: 28px; }
+.sim-note { font-size: 13px; margin-top: 6px; padding: 8px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn-ink); }
+.sim-prog { margin-bottom: 14px; }
+.warn-txt { color: var(--warn-ink); font-weight: 600; }
+.toast-action { margin-left: auto; min-height: 32px; padding: 0 10px; }
+.sim-gain { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 9px 0; border-bottom: 1px solid var(--rule); }

@@ -1,11 +1,11 @@
 // Hors ligne : tout le code de l'app est pré-caché ; les polices Google sont mises en cache au premier chargement.
-const VERSION = 'muscu-v41';
+const VERSION = 'muscu-v42';
 const FICHIERS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'icones/icone-192.png', 'icones/icone-512.png', 'icones/apple-touch-icon.png',
   'js/app.js', 'js/store.js', 'js/seed.js', 'js/profils.js', 'js/moteur.js', 'js/seance.js', 'js/strong-import.js',
-  'js/ui.js', 'js/graph.js', 'js/demo.js', 'js/alarme.js', 'js/montre.js', 'js/bibliotheque.js',
-  'js/vues/programmes.js', 'js/vues/seance.js', 'js/vues/historique.js', 'js/vues/exercices.js', 'js/vues/analyse.js', 'js/vues/reglages.js',
+  'js/ui.js', 'js/graph.js', 'js/demo.js', 'js/alarme.js', 'js/montre.js', 'js/bibliotheque.js', 'js/ajustement.js',
+  'js/vues/programmes.js', 'js/vues/seance.js', 'js/vues/historique.js', 'js/vues/exercices.js', 'js/vues/analyse.js', 'js/vues/reglages.js', 'js/vues/simulation.js',
 ];
 
 self.addEventListener('install', e => {
