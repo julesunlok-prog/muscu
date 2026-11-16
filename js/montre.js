@@ -1,7 +1,7 @@
 // Montre Garmin : la séance en cours part vers la montre (via le Worker), les séries validées au poignet reviennent.
 // Partie pure : mise à plat de la séance dans l'ordre de la montre, et application des événements reçus.
 // Spec : docs/superpowers/specs/2026-11-15-montre-garmin-design.md
-import { alternatives, remplacerExercice } from './seance.js';
+import { alternatives, remplacerExercice, transitionApres } from './seance.js';
 import { conseil, sessionsDe } from './moteur.js';
 import { SERVEUR, idAppareil } from './alarme.js';
 
@@ -46,7 +46,7 @@ export function versMontre(w, state, v = Date.now()) {
       lignes.forEach((ei, k) => {
         const e = w.entrees[ei], s = e.series[si];
         series.push({ sid: s.sid, ex: e.exerciseId, nom: abreger(e.nomExercice), n: si + 1, total: e.series.length,
-          kg: s.kg, reps: s.reps, ech: s.echauffement, faite: s.faite, repos: k === lignes.length - 1 ? reposTour : 0, ss: b.length > 1 });
+          kg: s.kg, reps: s.reps, ech: s.echauffement, faite: s.faite, repos: k === lignes.length - 1 ? reposTour + transitionApres(w, b, si) : 0, ss: b.length > 1 });
       });
     }
   }

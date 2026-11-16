@@ -3,7 +3,7 @@
 // minuteur dans l'en-tête, poignée pour réduire la séance, écran « Bravo » à la fin.
 import { cocher, cocherTour, modifierSerie, lireNombre, precedent, ajouterSerie, supprimerSerie, basculerEchauffement, ajouterExercice,
   supprimerExerciceSeance, deplacerExercice, terminer, programmeDepuisSeance, cocherRestantes, resteRepos, ajusterRepos, passerRepos,
-  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos, alternatives, remplacerExercice, basculerDegressive, modifierDegressive } from '../seance.js';
+  pauserRepos, reprendreRepos, recommencerRepos, lancerRepos, alternatives, remplacerExercice, basculerDegressive, modifierDegressive, transitionApres } from '../seance.js';
 import { recupererAvantFin, attendreFin, etatMontre } from '../montre.js';
 import { conseil, sessionsDe, e1rm, tonnage } from '../moteur.js';
 import * as programmes from './programmes.js';
@@ -228,11 +228,11 @@ function reduire(el, ctx) {
 
 // Trait de repos sous chaque série (ou tour) ; sous celle qui a lancé le repos, la barre de décompte.
 // cle : exercice(s) dont le trait règle le repos (« 2,3 » pour un superset).
-function ligneRepos(w, ei, si, cols, cle, repos, nom) {
+function ligneRepos(w, ei, si, cols, cle, repos, nom, plus = 0) {
   const actif = w.repos && w.repos.ei === ei && w.repos.si === si, reste = resteRepos(w);
   const arrive = actif && w.repos.pause == null && Date.now() - (w.repos.fin - w.repos.duree * 1000) < 1000;
   return `<tr class="ligne-repos ${actif ? 'actif' : ''}" ${actif ? 'data-repos-on' : ''}><td colspan="${cols}">
-    <div class="repos-trait"><span data-repos-txt="${cle}">${fmtChrono(repos)}</span>
+    <div class="repos-trait"><span data-repos-txt="${cle}">${fmtChrono(repos)}</span>${plus ? `<span>+ ${fmtChrono(plus)} avant la suite</span>` : ''}
       <input type="time" class="repos-choix" data-repos-ex="${cle}" value="${valeurDuree(repos)}" aria-label="Repos de ${esc(nom)} (minutes : secondes)"></div>
     ${actif ? `<button class="repos-actif ${arrive ? 'arrive' : ''}" data-act="repos" aria-label="Repos en cours : ouvrir le minuteur">
       <span class="repos-reste" data-repos-rail style="width:${Math.min(100, reste / w.repos.duree * 100)}%"></span>
@@ -275,7 +275,7 @@ function carte(state, ex, e, ei) {
         <td>${champSerie(ei, si, s, 'kg', 'decimal')}</td><td>${champSerie(ei, si, s, 'reps', 'numeric')}</td>${e.afficherRir ? `<td>${champSerie(ei, si, s, 'rir', 'numeric')}</td>` : ''}
         <td><button class="coche" data-act="coche" data-ei="${ei}" data-si="${si}" aria-pressed="${s.faite}" aria-label="Série ${si + 1} faite">${icon('check')}</button></td></tr>
         ${s.degressive ? ligneDegressive(ei, si, s, cols) : ''}
-        ${ligneRepos(w, ei, si, cols, ei, repos, e.nomExercice)}`;
+        ${ligneRepos(w, ei, si, cols, ei, repos, e.nomExercice, transitionApres(w, [ei], si))}`;
     }).join('')}</tbody></table>
     <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="serie-plus" data-ei="${ei}"><span>+ Série (<span data-repos-txt="${ei}">${fmtChrono(repos)}</span>)</span></button></div>
   </section>`;
@@ -309,7 +309,7 @@ function carteSuperset(state, E, eis) {
           <span class="prec">${esc(precedent(state, e.exerciseId, si) ?? '—')}</span>${champSerie(ei, si, s, 'kg', 'decimal')}${champSerie(ei, si, s, 'reps', 'numeric')}
           ${rir ? (e.afficherRir ? champSerie(ei, si, s, 'rir', 'numeric') : '<span></span>') : ''}</div>`; }).join('')}</td>
         <td><button class="coche" style="height:${lignes.length * 48 - 4}px" data-act="coche-tour" data-ei="${ei0}" data-si="${si}" data-tour="${tour}" aria-pressed="${faite}" aria-label="Tour ${si + 1} fait">${icon('check')}</button></td></tr>
-        ${ligneRepos(w, ei0, si, 3, cle, repos, 'ce superset')}`;
+        ${ligneRepos(w, ei0, si, 3, cle, repos, 'ce superset', transitionApres(w, eis, si))}`;
     }).join('')}</tbody></table>
     <div class="exo-actions"><button class="btn btn-secondary btn-sm" data-act="tour-plus" data-tour="${cle}"><span>+ Tour (<span data-repos-txt="${cle}">${fmtChrono(repos)}</span>)</span></button></div>
   </section>`;
@@ -371,6 +371,8 @@ function menuExercice(ctx, ei) {
   const f = ouvrirFeuille({ titre: e.nomExercice, corps: `
     <div class="form-group"><label for="note-ex">Note</label><input id="note-ex" class="form-control" value="${esc(e.note)}" maxlength="120" placeholder="Réglage du siège, prise…"></div>
     <div class="form-group"><label for="repos-ex">Repos entre les séries <span class="faint">(min : s)</span></label>${champDuree('repos-ex', repos)}</div>
+    <div class="form-group"><label for="transition-ex">Repos en plus avant l’exercice suivant <span class="faint">(min : s, 0:00 = aucun)</span></label>${champDuree('transition-ex', e.transition ?? 0)}
+      <p class="faint" style="margin:4px 0 0">S’ajoute au repos de la dernière série. Gardé dans le programme si tu l’enregistres à la fin.</p></div>
     <label class="case"><input type="checkbox" id="rir-ex" ${e.afficherRir ? 'checked' : ''}> Afficher la colonne RIR (reps en réserve)</label>
     <div style="display:flex;gap:8px;margin:12px 0">
       <button class="btn btn-secondary" style="flex:1" data-m="haut">${icon('haut')}Monter</button>
@@ -382,7 +384,14 @@ function menuExercice(ctx, ei) {
     if (!m) return;
     ctx.maj(st => {
       let w = st.enCours;
-      if (m === 'ok') w = { ...w, entrees: w.entrees.map((x, i) => i !== ei ? x : { ...x, note: f.querySelector('#note-ex').value.trim(), afficherRir: f.querySelector('#rir-ex').checked }) };
+      if (m === 'ok') {
+        const tr = lireDuree(f.querySelector('#transition-ex')) ?? e.transition ?? 0;
+        w = { ...w, entrees: w.entrees.map((x, i) => {
+          if (i !== ei) return x;
+          const { transition, ...y } = x;
+          return { ...y, note: f.querySelector('#note-ex').value.trim(), afficherRir: f.querySelector('#rir-ex').checked, ...(tr > 0 ? { transition: tr } : {}) };
+        }) };
+      }
       if (m === 'haut' || m === 'bas') w = deplacerExercice(w, ei, m === 'haut' ? -1 : 1);
       if (m === 'retirer') w = supprimerExerciceSeance(w, ei);
       // Le repos est réglé sur l'exercice lui-même : il vaut pour les séances suivantes aussi.

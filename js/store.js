@@ -47,6 +47,14 @@ export function sauver(state, storage = globalThis.localStorage) {
 
 export const exporterJSON = state => JSON.stringify(state, null, 2);
 
+// Rappel de sauvegarde (iOS efface tout quand l'app est retirée de l'écran d'accueil) : 15 jours après la dernière
+// sauvegarde, ou après la première séance s'il n'y en a jamais eu ; « Plus tard » le repousse (rappelReporte).
+export function rappelSauvegarde(state, now = Date.now()) {
+  const { derniereSauvegarde, rappelReporte } = state.settings;
+  const depuis = derniereSauvegarde ?? state.workouts.map(w => w.debut).sort()[0];
+  return !!depuis && now - Date.parse(depuis) >= 15 * 864e5 && !(rappelReporte && Date.parse(rappelReporte) > now);
+}
+
 export function importerJSON(text) {
   let s;
   try { s = JSON.parse(text); } catch { s = null; }

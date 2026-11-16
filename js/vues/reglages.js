@@ -8,7 +8,7 @@ import { activer, tester, desactiver, etat } from '../alarme.js';
 import { activerMontre, desactiverMontre, etatMontre, cleMontre } from '../montre.js';
 import { MUSCLES, NOM_MUSCLE, MATERIELS } from '../profils.js';
 import { SOURCES } from '../seed.js';
-import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger } from '../ui.js';
+import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger, fmtDate } from '../ui.js';
 
 export function render(el, ctx) {
   const { settings } = ctx.state;
@@ -42,7 +42,8 @@ export function render(el, ctx) {
 
     <section class="card">
       <h2 class="card-title" style="margin-bottom:6px">Sauvegarde</h2>
-      <p class="faint" style="margin:0 0 12px">Tes données restent sur ce téléphone. Exporte une sauvegarde chaque mois et garde-la dans Fichiers ou iCloud.</p>
+      <p class="faint" style="margin:0 0 12px">Tes données restent sur ce téléphone : retirer l’app de l’écran d’accueil les efface. Un rappel s’affiche tous les 15 jours ; garde le fichier dans Fichiers ou iCloud Drive.
+        <br>Dernière sauvegarde : <b>${settings.derniereSauvegarde ? fmtDate(settings.derniereSauvegarde) : 'jamais'}</b>.</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn btn-secondary" data-act="exporter">${icon('telecharger')}Exporter la sauvegarde</button>
         <label class="btn btn-secondary" style="margin:0">${icon('importer')}Importer une sauvegarde<input type="file" accept=".json,application/json" data-fichier="sauvegarde" class="hidden"></label>
@@ -64,7 +65,7 @@ export function render(el, ctx) {
     // button : <html> porte aussi data-theme (thème Clair/Sombre choisi) ; sans ça, tout toucher redessinait l'écran.
     const t = e.target.closest('button[data-theme]')?.dataset.theme;
     if (t) { ctx.maj(s => ({ ...s, settings: { ...s.settings, theme: t } })); appliquer(t); }
-    if (e.target.closest('[data-act="exporter"]')) exporter(ctx.state);
+    if (e.target.closest('[data-act="exporter"]')) sauvegarder(ctx);
     const a = e.target.closest('[data-alarme]')?.dataset.alarme;
     // activer() est appelée sans attente avant : iOS n'accorde la permission de notifications qu'en réponse directe au toucher.
     if (a === 'activer') activer(el.querySelector('#alarme-code').value.trim()).then(r => {
@@ -147,8 +148,11 @@ function appliquer(t) {
   if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
 }
 
-async function exporter(state) {
-  if (await telecharger(`muscu-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`, exporterJSON(state))) toast('Sauvegarde exportée.');
+// Aussi appelée par le bandeau de rappel (app.js).
+export async function sauvegarder(ctx) {
+  if (!await telecharger(`muscu-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`, exporterJSON(ctx.state))) return;
+  ctx.maj(s => ({ ...s, settings: { ...s.settings, derniereSauvegarde: new Date().toISOString(), rappelReporte: null } }));
+  toast('Sauvegarde exportée. Garde le fichier dans Fichiers ou iCloud Drive.');
 }
 
 async function importerSauvegarde(ctx, texte) {

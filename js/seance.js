@@ -5,10 +5,18 @@ const fmtKg = n => String(n).replace('.', ',');
 const exDe = (state, id) => state.exercises.find(e => e.id === id);
 const serie = (kg, reps) => ({ kg, reps, rir: null, faite: false, echauffement: false });
 
-function entree(state, exerciseId, nb, supersetGroupe = null) {
+function entree(state, exerciseId, nb, supersetGroupe = null, transition = null) {
   const ex = exDe(state, exerciseId);
   const c = conseil(ex, sessionsDe(state, exerciseId));
-  return { exerciseId, nomExercice: ex.nom, supersetGroupe, note: '', series: Array.from({ length: nb }, () => serie(c.kg, c.reps)) };
+  return { exerciseId, nomExercice: ex.nom, supersetGroupe, note: '', series: Array.from({ length: nb }, () => serie(c.kg, c.reps)),
+    ...(transition ? { transition } : {}) };
+}
+
+// Transition (facultative, en secondes) : repos en plus après la dernière série d'un exercice (ou le dernier tour d'un superset),
+// quand un autre exercice suit. Elle s'ajoute au repos de cette série. eis : l'exercice, ou les exercices du superset.
+export function transitionApres(w, eis, si) {
+  const dernierTour = si >= Math.max(...eis.map(ei => w.entrees[ei].series.length)) - 1;
+  return dernierTour && Math.max(...eis) < w.entrees.length - 1 ? Math.max(0, ...eis.map(ei => w.entrees[ei].transition ?? 0)) : 0;
 }
 
 export function demarrer(state, templateId, now = new Date()) {
@@ -16,7 +24,7 @@ export function demarrer(state, templateId, now = new Date()) {
   return {
     id: 'w' + now.getTime(), templateId: t?.id ?? null, nom: t?.nom ?? 'Séance libre',
     debut: now.toISOString(), fin: null, repos: null,
-    entrees: t ? t.items.map(it => entree(state, it.exerciseId, it.series, it.supersetGroupe)) : [],
+    entrees: t ? t.items.map(it => entree(state, it.exerciseId, it.series, it.supersetGroupe, it.transition)) : [],
   };
 }
 
@@ -51,7 +59,7 @@ export function cocher(w, ei, si, state, now = new Date()) {
   if (s.faite) return surSerie(w, ei, si, x => ({ ...x, faite: false }));
   if (!valide(s, state, w.entrees[ei])) return w;
   const suivant = surSerie(w, ei, si, x => ({ ...x, faite: true }));
-  const duree = exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90;
+  const duree = (exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90) + transitionApres(w, [ei], si);
   // ei / si : série sous laquelle s'affiche la barre de repos.
   return { ...suivant, repos: { fin: now.getTime() + duree * 1000, duree, ei, si } };
 }
@@ -63,7 +71,7 @@ export function cocherTour(w, eis, si, state, now = new Date()) {
   if (lignes.every(ei => w.entrees[ei].series[si].faite)) return lignes.reduce((x, ei) => surSerie(x, ei, si, s => ({ ...s, faite: false })), w);
   if (!lignes.every(ei => w.entrees[ei].series[si].faite || valide(w.entrees[ei].series[si], state, w.entrees[ei]))) return w;
   const suivant = lignes.reduce((x, ei) => surSerie(x, ei, si, s => ({ ...s, faite: true })), w);
-  const duree = Math.max(...eis.map(ei => exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90));
+  const duree = Math.max(...eis.map(ei => exDe(state, w.entrees[ei].exerciseId)?.reposSec ?? 90)) + transitionApres(w, eis, si);
   return { ...suivant, repos: { fin: now.getTime() + duree * 1000, duree, ei: lignes[0], si } };
 }
 
@@ -117,11 +125,12 @@ export function alternatives(state, exerciseId, w) {
 export function remplacerExercice(w, state, ei, nouvelId, sids = null) {
   const a = w.entrees[ei], faites = a.series.filter(s => s.faite), reste = a.series.length - faites.length;
   if (!reste) return w;
-  const b = entree(state, nouvelId, reste, a.supersetGroupe);
+  const b = entree(state, nouvelId, reste, a.supersetGroupe, a.transition); // B prend la place de A, transition comprise
   if (sids) b.series = b.series.map((s, i) => sids[i] ? { ...s, sid: sids[i] } : s);
   const entrees = [...w.entrees];
   if (!faites.length) { entrees[ei] = b; return { ...w, entrees }; }
-  entrees[ei] = { ...a, series: faites };
+  const { transition, ...sansTransition } = a; // A est maintenant suivi de B : plus de transition après lui
+  entrees[ei] = { ...sansTransition, series: faites };
   let j = ei;
   if (a.supersetGroupe) { b.supersetGroupe = null; while (entrees[j + 1]?.supersetGroupe === a.supersetGroupe) j++; }
   entrees.splice(j + 1, 0, b);
@@ -173,8 +182,9 @@ export function recommencerRepos(w, now = new Date()) {
   return { ...w, repos: { ...r, fin: now.getTime() + r.duree * 1000 } };
 }
 
+const item = ({ exerciseId, series, supersetGroupe, transition }) => ({ exerciseId, series, supersetGroupe, ...(transition ? { transition } : {}) });
 export const programmeDepuisSeance = w =>
-  w.entrees.map(e => ({ exerciseId: e.exerciseId, series: e.series.filter(s => !s.echauffement).length, supersetGroupe: e.supersetGroupe }));
+  w.entrees.map(e => item({ ...e, series: e.series.filter(s => !s.echauffement).length }));
 
 const meilleur = (series, f) => Math.max(...series.map(f).filter(x => x != null), -Infinity);
 
@@ -192,6 +202,6 @@ export function terminer(state, now = new Date()) {
     if (meilleur(travail, s => s.kg) > meilleur(avant, s => s.kg)) records.push({ nom: e.nomExercice, type: 'kg' });
   }
   const t = state.templates.find(x => x.id === w.templateId);
-  const programmeModifie = !!t && JSON.stringify(programmeDepuisSeance(w)) !== JSON.stringify(t.items.map(({ exerciseId, series, supersetGroupe }) => ({ exerciseId, series, supersetGroupe })));
+  const programmeModifie = !!t && JSON.stringify(programmeDepuisSeance(w)) !== JSON.stringify(t.items.map(item));
   return { workout, records, programmeModifie };
 }

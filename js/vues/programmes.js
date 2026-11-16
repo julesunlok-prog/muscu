@@ -2,7 +2,7 @@
 import { demarrer } from '../seance.js';
 import { NOM_MUSCLE } from '../profils.js';
 import { choisirDansBibliotheque } from './exercices.js';
-import { esc, icon, fmtDate, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
+import { esc, icon, fmtDate, fmtChrono, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
 
@@ -92,18 +92,20 @@ function editer(ctx, original, nouveau = false) {
     corps.innerHTML = `
       <div class="form-group"><label for="nom-prog">Nom</label><input id="nom-prog" class="form-control" value="${esc(t.nom)}" maxlength="40" autocomplete="off"></div>
       <div class="label">Exercices</div>
-      <ul class="liste">${t.items.map((it, i) => `<li class="liste-ligne" style="cursor:default">
-        <div style="min-width:0"><b>${esc(nomEx(it.exerciseId))}</b>
-          <div class="faint">${it.series} séries${it.supersetGroupe ? ` · superset ${esc(it.supersetGroupe)}` : ''}</div></div>
-        <div style="display:flex;gap:2px;flex:none">
+      <ul class="liste">${t.items.map((it, i) => `<li class="liste-ligne" style="cursor:default;flex-wrap:wrap;row-gap:2px">
+        <div style="min-width:0;flex:1 1 180px"><b>${esc(nomEx(it.exerciseId))}</b>
+          <div class="faint">${it.series} séries${it.supersetGroupe ? ` · superset ${esc(it.supersetGroupe)}` : ''}${it.transition ? ` · +${fmtChrono(it.transition)} avant la suite` : ''}</div></div>
+        <div style="display:flex;gap:2px;flex:none;margin-left:auto">
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="moins" aria-label="Une série de moins">−</button>
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="plus" aria-label="Une série de plus">+</button>
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="haut" aria-label="Monter">${icon('haut')}</button>
+          <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="transition" aria-label="Repos en plus avant l’exercice suivant">${icon('chrono')}</button>
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="ss" aria-label="Grouper en superset avec le suivant">SS</button>
           <button class="btn btn-texte btn-sm btn-icone" data-i="${i}" data-a="retirer" aria-label="Retirer">${icon('close')}</button>
         </div></li>`).join('') || '<li class="faint" style="padding:8px 0">Aucun exercice pour l’instant.</li>'}</ul>
       <button type="button" class="ajouter" data-a="ajouter" style="margin-top:12px">+ Ajouter un exercice</button>
-      <p class="faint">« SS » groupe l’exercice avec le suivant en superset : le repos démarre après le dernier des deux.</p>`;
+      <p class="faint">« SS » groupe l’exercice avec le suivant en superset : le repos démarre après le dernier des deux.
+        Le chrono ajoute du repos avant l’exercice suivant (1:00, 1:30, 2:00 ou 3:00), en plus de celui de la dernière série.</p>`;
   };
   dessiner();
   corps.addEventListener('input', e => { if (e.target.id === 'nom-prog') t.nom = e.target.value; });
@@ -119,6 +121,10 @@ function editer(ctx, original, nouveau = false) {
     if (b.dataset.a === 'moins') it.series = Math.max(1, it.series - 1);
     if (b.dataset.a === 'haut' && i > 0) [t.items[i - 1], t.items[i]] = [t.items[i], t.items[i - 1]];
     if (b.dataset.a === 'retirer') t.items.splice(i, 1);
+    if (b.dataset.a === 'transition') { // chaque toucher passe au palier suivant : aucun → 1:00 → 1:30 → 2:00 → 3:00 → aucun
+      const paliers = [0, 60, 90, 120, 180], n = paliers[(paliers.indexOf(it.transition ?? 0) + 1) % paliers.length];
+      if (n) it.transition = n; else delete it.transition;
+    }
     if (b.dataset.a === 'ss') {
       const suivant = t.items[i + 1];
       if (!suivant) { toast('Ajoute d’abord un exercice après celui-ci.', 'info'); return; }

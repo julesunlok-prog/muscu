@@ -1,5 +1,5 @@
 // Démarrage : état, routeur, barre d'onglets, barre du minuteur, service worker.
-import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CLE } from './store.js';
+import { chargerEtat, sauver, etatInitial, demanderPersistance, importerJSON, CLE, rappelSauvegarde } from './store.js';
 import { resteRepos, ajusterRepos, passerRepos } from './seance.js';
 import { genererDemo } from './demo.js';
 import { synchroniser, pilule } from './alarme.js';
@@ -113,6 +113,9 @@ function afficher() {
   VUES[nom].render(vue, ctx, params);
   if (reel) vue.insertAdjacentHTML('afterbegin', `<div class="bandeau-demo" role="status"><span><b>Mode démo</b> · données fictives, rien n’est enregistré.</span>
     <button class="btn btn-secondary btn-sm" data-quitter-demo>Quitter</button></div>`);
+  else if (nom !== 'seance' && rappelSauvegarde(state)) vue.insertAdjacentHTML('afterbegin', `<div class="bandeau-demo" role="status">
+    <span><b>Sauvegarde</b> · 15 jours sans copie</span>
+    <span style="display:flex;gap:4px;flex:none"><button class="btn btn-texte btn-sm" data-plus-tard>Plus tard</button><button class="btn btn-primary btn-sm" data-sauvegarder>Sauvegarder</button></span></div>`);
   if (meme) window.scrollTo(0, y); else window.scrollTo(0, 0);
   document.querySelectorAll('.onglets a').forEach(a => a.toggleAttribute('aria-current', a.dataset.nom === (nom === 'seance' ? 'programmes' : nom)));
   document.querySelectorAll('.onglets a[aria-current]').forEach(a => a.setAttribute('aria-current', 'page'));
@@ -203,6 +206,8 @@ document.addEventListener('dblclick', e => e.preventDefault(), { passive: false 
 document.addEventListener('click', e => {
   if (e.target.closest('[data-lancer-demo]')) ctx.lancerDemo();
   if (e.target.closest('[data-quitter-demo]')) ctx.quitterDemo();
+  if (e.target.closest('button[data-sauvegarder]')) reglages.sauvegarder(ctx);
+  if (e.target.closest('button[data-plus-tard]')) ctx.maj(s => ({ ...s, settings: { ...s.settings, rappelReporte: new Date(Date.now() + 3 * 864e5).toISOString() } }));
 });
 ticPartout();
 appliquerTheme();
