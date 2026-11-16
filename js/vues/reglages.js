@@ -41,6 +41,11 @@ export function render(el, ctx) {
     </section>
 
     <section class="card">
+      <h2 class="card-title" style="margin-bottom:6px">Partager l’app</h2>
+      <p class="faint" style="margin:0 0 12px">Un QR code et un tuto d’installation pas à pas pour tes amis.</p>
+      <a class="btn btn-secondary btn-bloc" href="installer.html?partage">Montrer le QR code</a>
+    </section>
+    <section class="card">
       <h2 class="card-title" style="margin-bottom:6px">Sauvegarde</h2>
       <p class="faint" style="margin:0 0 12px">Tes données restent sur ce téléphone : retirer l’app de l’écran d’accueil les efface. Un rappel s’affiche tous les 15 jours ; garde le fichier dans Fichiers ou iCloud Drive.
         <br>Dernière sauvegarde : <b>${settings.derniereSauvegarde ? fmtDate(settings.derniereSauvegarde) : 'jamais'}</b>.</p>
