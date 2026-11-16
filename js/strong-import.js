@@ -86,6 +86,33 @@ export function correspondanceAuto(noms, state) {
   return Object.fromEntries(noms.map(n => [n, state.exercises.find(e => !e.archive && norm(e.nom) === norm(n))?.id ?? null]));
 }
 
+// Strong n'exporte ni routines, ni repos, ni supersets : on recrée un programme par nom de séance fait au moins 2 fois
+// (les noms ponctuels type « Evening Workout » n'en font pas), d'après sa dernière séance : ordre des exercices et nombre de séries.
+export function programmesDepuis(lignes, correspondance, state) {
+  const existants = new Set(state.templates.map(t => norm(t.nom))), parNom = new Map();
+  for (const l of lignes) {
+    if (!parNom.has(l.seance)) parNom.set(l.seance, new Map());
+    const dates = parNom.get(l.seance);
+    if (!dates.has(l.date)) dates.set(l.date, []);
+    dates.get(l.date).push(l);
+  }
+  const out = [];
+  for (const [nom, dates] of parNom) {
+    if (dates.size < 2 || existants.has(norm(nom))) continue;
+    const derniere = [...dates.entries()].sort((a, b) => versDate(a[0]) - versDate(b[0])).at(-1)[1], items = [];
+    for (const l of derniere) {
+      const id = correspondance[l.exercice];
+      if (!id) continue;
+      let it = items.find(x => x.exerciseId === id);
+      if (!it) items.push(it = { exerciseId: id, series: 0, supersetGroupe: null });
+      if (!l.echauffement) it.series++;
+    }
+    for (const it of items) it.series = Math.min(10, Math.max(1, it.series));
+    if (items.length) out.push({ id: 't' + Date.now() + out.length, nom, items });
+  }
+  return out;
+}
+
 export function versWorkouts(lignes, correspondance, state) {
   const groupes = new Map();
   for (const l of lignes) {

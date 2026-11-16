@@ -1,12 +1,12 @@
 // Réglages : thème, muscles prioritaires, cibles de volume, sauvegarde, import Strong, sources.
 import { exporterJSON, importerJSON } from '../store.js';
-import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts } from '../strong-import.js';
-import { BIBLIOTHEQUE, correspondanceAvecBibliotheque, creerDepuisCorrespondance } from '../bibliotheque.js';
+import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts, programmesDepuis } from '../strong-import.js';
+import { BIBLIOTHEQUE, correspondanceAvecBibliotheque, creerDepuisCorrespondance, deviner } from '../bibliotheque.js';
 import { ciblesVolume } from '../moteur.js';
 import { lireNombre } from '../seance.js';
 import { activer, tester, desactiver, etat } from '../alarme.js';
 import { activerMontre, desactiverMontre, etatMontre, cleMontre } from '../montre.js';
-import { MUSCLES, NOM_MUSCLE } from '../profils.js';
+import { MUSCLES, NOM_MUSCLE, MATERIELS } from '../profils.js';
 import { SOURCES } from '../seed.js';
 import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger } from '../ui.js';
 
@@ -168,21 +168,34 @@ function importerStrong(ctx, texte) {
   const auto = correspondanceAvecBibliotheque(noms, ctx.state, correspondanceAuto(noms, ctx.state));
   const exos = ctx.state.exercises.filter(e => !e.archive).sort((a, b) => a.nom.localeCompare(b.nom));
   const biblio = BIBLIOTHEQUE.map((b, i) => [i, b]).sort((x, y) => x[1].nom.localeCompare(y[1].nom));
+  const compte = v => noms.filter(n => v(auto[n])).length;
+  const recap = [[compte(v => v && !v.startsWith('biblio:') && v !== 'creer'), 'Reliés à tes exercices'],
+    [compte(v => v?.startsWith('biblio:')), 'Créés depuis la bibliothèque'], [compte(v => v === 'creer'), 'Créés sous leur nom Strong'],
+    [compte(v => !v), 'Ignorés (rien de proche)']].filter(([nb]) => nb).map(([nb, t]) => `<li>${t} : <b>${nb}</b></li>`).join('');
   const f = ouvrirFeuille({
-    titre: 'Associer les exercices',
-    corps: `<p class="faint" style="margin-top:0">Pour chaque exercice importé, choisis l’exercice de l’app correspondant, ou un exercice de la bibliothèque à créer. « Ignorer » ne l’importe pas.</p>
-      ${noms.map((n, i) => `<div class="form-group"><label for="m${i}">${esc(n)}</label><select id="m${i}" class="form-control" data-nom="${esc(n)}">
-        <option value="">Ignorer</option><optgroup label="Mes exercices">${exos.map(e => `<option value="${esc(e.id)}" ${auto[n] === e.id ? 'selected' : ''}>${esc(e.nom)}</option>`).join('')}</optgroup>
-        <optgroup label="Créer depuis la bibliothèque">${biblio.map(([j, b]) => `<option value="biblio:${j}" ${auto[n] === 'biblio:' + j ? 'selected' : ''}>${esc(b.nom)}</option>`).join('')}</optgroup></select></div>`).join('')}`,
+    titre: 'Importer',
+    corps: `<ul style="margin:0 0 8px;padding-left:18px">${recap}</ul>
+      <label class="case"><input type="checkbox" data-programmes checked> Recréer mes programmes (séances faites au moins 2 fois : ordre des exercices et nombre de séries)</label>
+      <p class="faint">L’export ne contient ni les repos ni les supersets : les repos sont ceux de l’app selon le type d’exercice, et les supersets se refont avec « SS » dans le programme. Les charges et les reps de chaque série sont toutes importées.</p>
+      <details><summary>Vérifier les exercices (${noms.length})</summary>
+      ${noms.map((n, i) => { const d = auto[n] === 'creer' ? deviner(n) : null; return `<div class="form-group"><label for="m${i}">${esc(n)}</label><select id="m${i}" class="form-control" data-nom="${esc(n)}">
+        <option value="">Ignorer</option>${d ? `<option value="creer" selected>Créer « ${esc(n)} » (${esc(NOM_MUSCLE[d.musclePrincipal])} · ${esc(MATERIELS[d.materiel].nom)})</option>` : ''}
+        <optgroup label="Mes exercices">${exos.map(e => `<option value="${esc(e.id)}" ${auto[n] === e.id ? 'selected' : ''}>${esc(e.nom)}</option>`).join('')}</optgroup>
+        <optgroup label="Créer depuis la bibliothèque">${biblio.map(([j, b]) => `<option value="biblio:${j}" ${auto[n] === 'biblio:' + j ? 'selected' : ''}>${esc(b.nom)}</option>`).join('')}</optgroup></select></div>`; }).join('')}
+      </details>`,
     pied: '<button class="btn btn-texte" data-fermer>Annuler</button><button class="btn btn-primary" data-p="ok">Importer</button>',
   });
   f.querySelector('[data-p="ok"]').onclick = () => {
     const choix = Object.fromEntries([...f.querySelectorAll('select[data-nom]')].map(s => [s.dataset.nom, s.value || null]));
     const { corr, nouveaux } = creerDepuisCorrespondance(choix);
-    const ws = versWorkouts(lignes, corr, { ...ctx.state, exercises: [...ctx.state.exercises, ...nouveaux] });
-    const utiles = nouveaux.filter(e => ws.some(w => w.entrees.some(x => x.exerciseId === e.id)));
-    ctx.maj(s => ({ ...s, exercises: [...s.exercises, ...utiles], workouts: [...s.workouts, ...ws].sort((a, b) => a.debut.localeCompare(b.debut)) }));
+    const avant = { ...ctx.state, exercises: [...ctx.state.exercises, ...nouveaux] };
+    const tps = f.querySelector('[data-programmes]').checked ? programmesDepuis(lignes, corr, avant) : [];
+    const ws = versWorkouts(lignes, corr, { ...avant, templates: [...avant.templates, ...tps] });
+    const servis = new Set([...ws.flatMap(w => w.entrees.map(x => x.exerciseId)), ...tps.flatMap(t => t.items.map(x => x.exerciseId))]);
+    ctx.maj(s => ({ ...s, exercises: [...s.exercises, ...nouveaux.filter(e => servis.has(e.id))], templates: [...s.templates, ...tps],
+      workouts: [...s.workouts, ...ws].sort((a, b) => a.debut.localeCompare(b.debut)) }));
     fermerFeuille(f);
-    toast(ws.length ? `${ws.length} séance${ws.length > 1 ? 's' : ''} importée${ws.length > 1 ? 's' : ''}.` : 'Rien de nouveau à importer.', ws.length ? 'success' : 'info');
+    const pl = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+    toast(ws.length || tps.length ? `${pl(ws.length, 'séance')} et ${pl(tps.length, 'programme')} importés.` : 'Rien de nouveau à importer.', ws.length ? 'success' : 'info');
   };
 }

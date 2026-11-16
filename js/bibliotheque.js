@@ -184,12 +184,29 @@ export const trouver = nom => PAR_NOM.get(norm(nom)) ?? null;
 
 export const depuisBibliotheque = b => nouvelExercice(structuredClone(b));
 
-// Import Strong : ton exercice du même nom d'abord, sinon la fiche de la bibliothèque (« biblio:<n° de ligne> »), sinon rien.
+// Nom inconnu (exercice perso de Strong) : gardé tel quel ; muscle et type pris sur la fiche qui partage le plus de mots,
+// matériel lu dans le nom quand il y est. null si aucun mot en commun.
+const MATERIEL_DU_NOM = [[/smith/, 'smith'], [/barbell|barre|ez bar/, 'barre'], [/dumbbell|haltere/, 'halteres'], [/cable|poulie/, 'poulie'],
+  [/kettlebell/, 'kettlebell'], [/plate loaded|hammer|disques/, 'machine_plaques'], [/machine/, 'machine_pile'], [/bodyweight|weighted|leste|poids du corps/, 'poids_du_corps']];
+export function deviner(nom) {
+  const n = norm(nom), mots = n.replace(/[^a-z0-9 ]/g, ' ').split(' ').filter(m => m.length >= 3);
+  let best = null, score = 0;
+  for (const b of BIBLIOTHEQUE) {
+    const t = texte(b), sc = mots.filter(m => t.includes(m)).length;
+    if (sc > score) { best = b; score = sc; }
+  }
+  if (!best) return null;
+  const materiel = MATERIEL_DU_NOM.find(([re]) => re.test(n))?.[1] ?? best.materiel;
+  return { nom, materiel, type: best.type, musclePrincipal: best.musclePrincipal, musclesSecondaires: [...best.musclesSecondaires] };
+}
+
+// Import Strong : ton exercice du même nom d'abord, sinon la fiche de la bibliothèque (« biblio:<n° de ligne> »),
+// sinon un exercice créé sous son nom Strong (« creer »), sinon rien.
 export function correspondanceAvecBibliotheque(noms, state, auto) {
   return Object.fromEntries(noms.map(n => {
     if (auto[n]) return [n, auto[n]];
     const b = trouver(n);
-    if (!b) return [n, null];
+    if (!b) return [n, deviner(n) ? 'creer' : null];
     const mien = state.exercises.find(e => !e.archive && norm(e.nom) === norm(b.nom));
     return [n, mien ? mien.id : 'biblio:' + BIBLIOTHEQUE.indexOf(b)];
   }));
@@ -199,6 +216,7 @@ export function correspondanceAvecBibliotheque(noms, state, auto) {
 export function creerDepuisCorrespondance(corr) {
   const crees = {}, nouveaux = [];
   const out = Object.fromEntries(Object.entries(corr).map(([n, v]) => {
+    if (v === 'creer') { const e = nouvelExercice(deviner(n)); nouveaux.push(e); return [n, e.id]; }
     if (!v?.startsWith('biblio:')) return [n, v];
     if (!crees[v]) { const e = depuisBibliotheque(BIBLIOTHEQUE[+v.slice(7)]); crees[v] = e.id; nouveaux.push(e); }
     return [n, crees[v]];
