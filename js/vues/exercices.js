@@ -47,6 +47,7 @@ export function choisirDansBibliotheque(ctx, { titre, mes = false, choisi, proch
       <input class="form-control" type="search" data-cherche placeholder="Chercher : presse, curl, lat pulldown…" autocomplete="off" aria-label="Chercher un exercice" style="margin-bottom:8px">
       <div class="puces" role="group" aria-label="Filtrer par muscle" data-puces></div></div>
     <div data-resultats></div><button class="btn btn-texte btn-bloc" data-perso>Créer un exercice personnalisé…</button>` });
+  f.classList.add('haute');
   const ligne = (attr, x) => `<li><a class="liste-ligne" href="javascript:void 0" ${attr}><div style="min-width:0"><b>${esc(x.nom)}</b>
     <div class="faint">${esc(NOM_MUSCLE[x.musclePrincipal])} · ${esc(MATERIELS[x.materiel].nom)}</div></div>${icon(icone, 'icone chevron')}</a></li>`;
   const section = (titreS, l, attr) => l.length ? `<div class="label" style="margin-top:12px">${esc(titreS)}</div><ul class="liste">${l.map(x => ligne(attr(x), x)).join('')}</ul>` : '';
