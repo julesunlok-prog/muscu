@@ -70,15 +70,17 @@ function carteSemaine(state, cycle, E) {
   if (!cycle) return state.templates.length ? `<section class="card"><h2 class="card-title" style="margin-bottom:6px">Ta semaine</h2>
     <p class="muted" style="margin:0 0 12px;font-size:14px">Indique l’ordre de tes séances sur 7 jours : l’app te proposera la suivante et comptera juste ton volume.</p>
     <button class="btn btn-secondary btn-bloc" data-act="semaine">Définir ma semaine</button></section>` : '';
-  const t = state.templates.find(x => x.id === cycle.cases[cycle.prochaine].templateId), r = resume(t, E);
+  // Plus rien à proposer : la dernière séance du cycle est en cours.
+  const t = state.templates.find(x => x.id === cycle.cases[cycle.prochaine]?.templateId), r = t && resume(t, E);
   const passees = cycle.cases.filter(x => x.etat !== 'a_faire').length;
   return `<section class="card">
     <div class="card-tete" style="align-items:center"><h2 class="card-title">Ma semaine</h2>
       <button class="btn btn-texte btn-sm" data-act="semaine">${cycle.jour ? `Jour ${cycle.jour} / 7` : 'Nouveau cycle'} · modifier</button></div>
     ${pastilles(state, cycle.cases, cycle.prochaine)}
     <div class="rail-cycle"><i style="width:${Math.round(passees / cycle.cases.length * 100)}%"></i></div>
-    <p style="margin:12px 0 0;font-size:15px"><b>Prochaine : ${esc(t.nom)}</b><span class="faint" style="display:block">${esc(r.muscles || 'Aucun exercice')} · ${r.detail}</span></p>
-    ${state.enCours ? '' : `<div class="semaine-actions"><button class="btn btn-primary" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
+    ${t ? `<p style="margin:12px 0 0;font-size:15px"><b>Prochaine : ${esc(t.nom)}</b><span class="faint" style="display:block">${esc(r.muscles || 'Aucun exercice')} · ${r.detail}</span></p>`
+      : '<p style="margin:12px 0 0;font-size:15px"><b>Dernière séance du cycle en cours</b></p>'}
+    ${state.enCours || !t ? '' : `<div class="semaine-actions"><button class="btn btn-primary" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
       <button class="btn btn-secondary" data-act="passer" data-id="${esc(t.id)}">Passer</button></div>`}
   </section>`;
 }

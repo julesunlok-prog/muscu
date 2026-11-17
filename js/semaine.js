@@ -33,30 +33,46 @@ export function cycles(state, now = new Date()) {
   };
   periodes.forEach((p, i) => {
     const derniere = i === periodes.length - 1;
-    const fin = derniere ? now.toISOString() : periodes[i + 1].depuis;
+    // Une période commence à minuit du jour où la liste a été enregistrée : la séance faite le matin même compte.
+    // La toute première remonte en plus jusqu'au dernier passage de sa 1re séance dans les 6 jours d'avant :
+    // on définit souvent sa semaine après l'avoir commencée (ou juste après minuit).
+    let debutP = minuit(p.depuis).toISOString();
+    if (i === 0) {
+      const tot = plusJours(minuit(p.depuis), -6).toISOString();
+      const premier = state.workouts.filter(w => w.templateId === p.ordre[0] && w.debut >= tot && w.debut < debutP).map(w => w.debut).sort().at(-1);
+      if (premier) debutP = minuit(premier).toISOString();
+    }
+    // Liste actuelle : pas de borne de fin (un saut daté de la même milliseconde que l'affichage compte).
+    const fin = derniere ? null : minuit(periodes[i + 1].depuis).toISOString();
     // Un programme supprimé ne sort que de la liste actuelle : l'historique des périodes passées ne bouge pas.
     const ordre = derniere ? ordreFiltre(state, p.ordre) : p.ordre;
     if (!ordre.length) return;
-    const dans = date => date >= p.depuis && date < fin;
+    const dans = date => date >= debutP && (fin == null || date < fin);
     const evts = [
       ...state.workouts.filter(w => ordre.includes(w.templateId) && dans(w.debut)).map(w => ({ faite: true, templateId: w.templateId, date: w.debut })),
       ...(state.sautees ?? []).filter(s => ordre.includes(s.templateId) && dans(s.date)).map(s => ({ faite: false, templateId: s.templateId, date: s.date, saut: s })),
+      // Séance en cours : occupe sa case (« en cours ») sans être comptée comme faite tant qu'elle n'est pas terminée.
+      ...(derniere && state.enCours && ordre.includes(state.enCours.templateId) && state.enCours.debut >= debutP
+        ? [{ enCours: true, templateId: state.enCours.templateId, date: state.enCours.debut }] : []),
     ].sort((a, b) => a.date.localeCompare(b.date));
     let c = null;
     for (const e of evts) {
       if (c && Date.parse(e.date) >= c.fin.getTime()) { clore(c); c = null; }
       if (!c) { const debut = minuit(e.date); c = { debut, fin: plusJours(debut, 7), cases: ordre.map(templateId => ({ templateId, etat: 'a_faire' })) }; }
       const meme = etat => c.cases.find(x => x.templateId === e.templateId && x.etat === etat);
-      if (e.faite) {
+      if (e.enCours) {
+        const x = meme('a_faire') ?? meme('sautee');
+        if (x) { x.etat = 'en_cours'; delete x.saut; }
+      } else if (e.faite) {
         const x = meme('a_faire') ?? meme('sautee'); // une séance faite remplace un saut du même programme
         if (x) { x.etat = 'faite'; delete x.saut; }
       } else {
         const x = meme('a_faire');
         if (x) { x.etat = 'sautee'; x.saut = e.saut; }
       }
-      if (!c.cases.some(x => x.etat === 'a_faire')) { clore(c); c = null; }
+      if (!c.cases.some(x => x.etat === 'a_faire' || x.etat === 'en_cours')) { clore(c); c = null; }
     }
-    if (c && Date.parse(fin) >= c.fin.getTime()) clore(c);
+    if (c && (fin == null ? now.getTime() : Date.parse(fin)) >= c.fin.getTime()) clore(c);
     else if (c && derniere) courant = c;
     // liste modifiée en plein cycle : cycle abandonné sans ratée, ses sauts restent dans l'historique
     else if (c) for (const x of c.cases) if (x.etat === 'sautee') sauteesVisibles.push(x.saut);

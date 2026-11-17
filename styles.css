@@ -495,3 +495,4 @@ details.explication p, details.explication ul { margin: 0 0 8px; }
 .semaine-ligne select { flex: 1; min-width: 0; }
 .semaine-ligne .btn-icone { width: 38px; flex: none; }
 .absence { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px; font-size: 14px; color: var(--faint); }
+.cycle .en_cours { background: var(--accent-soft); color: var(--accent-ink); }
