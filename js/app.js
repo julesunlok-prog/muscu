@@ -208,6 +208,16 @@ document.addEventListener('focusin', e => {
   const el = e.target;
   if (el.matches?.('input[inputmode="numeric"], input[inputmode="decimal"]')) setTimeout(() => { if (document.activeElement === el) el.setSelectionRange(0, el.value.length); }, 50);
 });
+// Bug iOS : à la fermeture du clavier, la barre d'onglets (position: fixed) reste décalée et suit le défilement
+// jusqu'à ce que la page défile « pour de vrai ». On provoque ce défilement d'un pixel aller-retour.
+const recaler = () => {
+  if (document.activeElement?.matches?.('input, textarea, select')) return; // clavier encore ouvert (champ suivant)
+  const y = window.scrollY;
+  window.scrollTo(0, y > 0 ? y - 1 : y + 1);
+  window.scrollTo(0, y);
+};
+window.visualViewport?.addEventListener('resize', recaler);
+document.addEventListener('focusout', () => setTimeout(recaler, 300));
 document.addEventListener('click', e => {
   if (e.target.closest('[data-lancer-demo]')) ctx.lancerDemo();
   if (e.target.closest('[data-quitter-demo]')) ctx.quitterDemo();
