@@ -57,12 +57,17 @@ export const legende = series => `<div class="legende">${series.map((s, i) =>
   `<span><i style="background:var(--dv-${i % COULEURS + 1})"></i>${esc(s.nom)}</span>`).join('')}</div>`;
 
 // Barres verticales ; cible : ligne horizontale en pointillés.
-export function barres(points, { cible = null, titre = 'Barres' } = {}) {
+// troncons : chaque barre empile y tronçons (un par séance, comme Strong), séparés de 2 px.
+export function barres(points, { cible = null, titre = 'Barres', troncons = false } = {}) {
   if (!points.length) return '';
   const pas = points.length > 1 ? (Math.max(...points.map(p => p.x)) - Math.min(...points.map(p => p.x))) / (points.length - 1) : 864e5;
   const e = echelles(points.map(p => p.x), [0, ...points.map(p => p.y), ...(cible == null ? [] : [cible])], pas / 2);
   const l = Math.max(3, Math.min(14, (L - G - D) / points.length * 0.5));
+  const rect = (p, haut, bas) => `<rect class="barre" x="${(e.x(p.x) - l / 2).toFixed(1)}" y="${haut.toFixed(1)}" width="${l.toFixed(1)}" height="${(bas - haut).toFixed(1)}" rx="2"/>`;
+  const rects = troncons
+    ? points.flatMap(p => Array.from({ length: p.y }, (_, k) => rect(p, e.y(k + 1) + 1, e.y(k) - 1)))
+    : points.map(p => rect(p, e.y(p.y), e.y(e.y0)));
   return svg(titre, `${axes(e)}
-    ${points.map(p => `<rect class="barre" x="${(e.x(p.x) - l / 2).toFixed(1)}" y="${e.y(p.y).toFixed(1)}" width="${l.toFixed(1)}" height="${(e.y(e.y0) - e.y(p.y)).toFixed(1)}" rx="2"/>`).join('')}
+    ${rects.join('')}
     ${cible == null ? '' : horizontale(e, cible, 'cible')}`);
 }

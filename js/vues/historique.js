@@ -1,6 +1,7 @@
 // Historique des séances : liste, détail modifiable, suppression.
 import { lireNombre, modifierSeanceHistorique } from '../seance.js';
 import { tonnage } from '../moteur.js';
+import { absences } from '../semaine.js';
 import { esc, icon, fmtKg, fmtNum, fmtDuree, fmtDateLongue, ouvrirFeuille, fermerFeuille, confirmer, toast } from '../ui.js';
 
 const travail = w => w.entrees.flatMap(e => e.series.filter(s => !s.echauffement));
@@ -14,9 +15,13 @@ function ligneMontre(m) {
 }
 
 export function render(el, ctx) {
-  const ws = [...ctx.state.workouts].sort((a, b) => b.debut.localeCompare(a.debut));
+  // Séances, puis séances sautées ou ratées de la semaine type (lignes grises, sans détail), de la plus récente à la plus ancienne.
+  const nomDe = id => ctx.state.templates.find(t => t.id === id)?.nom ?? 'Séance';
+  const ws = [...ctx.state.workouts.map(w => ({ w, date: w.debut })), ...absences(ctx.state).map(a => ({ a, date: a.date }))]
+    .sort((x, y) => y.date.localeCompare(x.date));
   el.innerHTML = `<div class="page-header"><h1 class="page-title">Historique</h1></div>
-    ${ws.length ? `<section class="card" style="padding:4px 8px"><ul class="liste">${ws.map(w => {
+    ${ws.length ? `<section class="card" style="padding:4px 8px"><ul class="liste">${ws.map(({ w, a }) => {
+      if (a) return `<li class="absence"><span><b>${esc(nomDe(a.templateId))}</b> · ${a.type === 'sautee' ? 'sautée' : 'ratée'}</span><span>${esc(fmtDateLongue(a.date))}</span></li>`;
       const s = travail(w);
       return `<li><a class="liste-ligne" href="javascript:void 0" data-id="${esc(w.id)}">
         <div style="min-width:0"><b>${esc(w.nom)}</b><div class="faint">${esc(fmtDateLongue(w.debut))}</div></div>

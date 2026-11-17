@@ -2,6 +2,7 @@
 // (docs/superpowers/specs/2026-11-16-ajustement-programme-design.md). Fonctions pures : rien ne modifie l'état.
 import { MUSCLES, NOM_MUSCLE, PROFILS } from './profils.js';
 import { volumePrevu, volumeSemaine, ciblesVolume, alerteEpaules, lundis } from './moteur.js';
+import { occurrences } from './semaine.js';
 import { BIBLIOTHEQUE, depuisBibliotheque } from './bibliotheque.js';
 import { norm } from './strong-import.js';
 import { GROUPE } from './seance.js';
@@ -66,7 +67,7 @@ function volSeance(tpl, E) {
   return v;
 }
 
-// Applique un changement à { templates, exercises } ; ignoré (état rendu tel quel) si sa cible n'existe plus.
+// Applique un changement à { templates, exercises, settings } ; ignoré (état rendu tel quel) si sa cible n'existe plus.
 function appliquer(etat, c) {
   const tpl = etat.templates.find(t => t.id === c.templateId);
   if (!tpl) return etat;
@@ -97,12 +98,12 @@ function appliquer(etat, c) {
     a.supersetGroupe = lettre; b.supersetGroupe = lettre;
     items.splice(items.indexOf(a) + 1, 0, b);
   }
-  return { exercises, templates: etat.templates.map(t => t === tpl ? { ...t, items } : t) };
+  return { ...etat, exercises, templates: etat.templates.map(t => t === tpl ? { ...t, items } : t) };
 }
 
 // Rejoue les changements cochés, dans l'ordre, sur les vrais programmes.
 export function simuler(state, changements, coches) {
-  let etat = { templates: state.templates, exercises: state.exercises };
+  let etat = { templates: state.templates, exercises: state.exercises, settings: state.settings };
   for (const c of changements) if (coches.has(c.id)) etat = appliquer(etat, c);
   return etat;
 }
@@ -126,7 +127,7 @@ export function requis(changements, id) {
 export function analyser(state, now = new Date()) {
   const dureeMax = (state.settings.dureeMax ?? DUREE_MAX) * 60;
   const cibles = ciblesVolume(state), prio = state.settings.musclesPrioritaires;
-  const E0 = exDe(state), prevu = volumePrevu(state);
+  const E0 = exDe(state), prevu = volumePrevu(state), occ = occurrences(state);
   const fact = Object.fromEntries(state.templates.map(t => [t.id, facteur(state, t)]));
   const fait = Object.fromEntries(MUSCLES.map(m => [m, 0]));
   // 4 dernières semaines complètes : la semaine en cours, entamée, ferait croire qu'on en fait moins que prévu.
@@ -143,7 +144,7 @@ export function analyser(state, now = new Date()) {
   const ordre = MUSCLES.filter(m => vises.has(m) && D[m].statut === 'retard' && !D[m].moinsQuePrevu)
     .sort((a, b) => prio.includes(b) - prio.includes(a) || prevu[a] / cibles[a] - prevu[b] / cibles[b]);
 
-  let etat = { templates: state.templates, exercises: state.exercises };
+  let etat = { templates: state.templates, exercises: state.exercises, settings: state.settings };
   const changements = [], creesBiblio = {}, epaules = !!alerteEpaules(state);
   let num = 0;
   const duree = (et, tid) => dureeCalculee(et.templates.find(t => t.id === tid), exDe(et)) * fact[tid];
@@ -185,6 +186,7 @@ export function analyser(state, now = new Date()) {
       if (ecart < 0.5) break;
       const options = [];
       for (const tpl of etat.templates) {
+        if (occ && !occ[tpl.id]) continue; // hors de la semaine type : ne compte pas dans le volume prévu
         const vs = volSeance(tpl, E)[m], niv = niveau(tpl, m, E);
         if (vs + 1 > MAX_SEANCE) continue;
         for (const it of tpl.items) {
@@ -260,7 +262,7 @@ export function analyser(state, now = new Date()) {
   for (const m of ordre) if (cibles[m] - fin[m] >= 0.5) notes.push({ type: 'plein', muscle: m, manque: cibles[m] - fin[m] });
 
   // Chiffres affichés : rejoués dans l'ordre (gain par muscle, minutes, durée après, dépassement) et textes.
-  let cur = { templates: state.templates, exercises: state.exercises };
+  let cur = { templates: state.templates, exercises: state.exercises, settings: state.settings };
   for (const c of changements) {
     const avant = volumePrevu(cur), dAv = duree(cur, c.templateId), apres = appliquer(cur, c), vAp = volumePrevu(apres), dAp = duree(apres, c.templateId);
     c.gain = Object.fromEntries(MUSCLES.filter(x => Math.abs(vAp[x] - avant[x]) > 1e-9).map(x => [x, gainPoints(avant[x], vAp[x])]));

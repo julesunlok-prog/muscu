@@ -477,3 +477,21 @@ details.explication p, details.explication ul { margin: 0 0 8px; }
 .sim-resume { flex: 1; min-width: 0; font-size: 13px; }
 .sim-resume b, .sim-resume span { display: block; }
 .sim-resume span { font-size: 12px; }
+
+/* ---------- Semaine type (cycle de séances) ---------- */
+/* Pastilles qui passent à la ligne : jamais de rangée qui défile horizontalement (le toucher iOS s'y bloque). */
+.cycle { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.cycle span { flex: 1 1 0; min-width: 30px; padding: 8px 4px; border-radius: 10px; background: var(--chip); color: var(--faint); font-size: 12px; font-weight: 600;
+  text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cycle .faite { background: var(--pos-bg); color: var(--pos-ink); }
+.cycle .sautee { background: var(--warn-bg); color: var(--warn-ink); }
+.cycle .ici { background: var(--btn); color: var(--btn-ink); }
+.rail-cycle { height: 4px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.rail-cycle i { display: block; height: 100%; background: var(--data); transition: width .3s var(--out); }
+.semaine-actions { display: flex; gap: 8px; margin-top: 12px; }
+.semaine-actions .btn-primary { flex: 1; }
+.semaine-ligne { cursor: default; gap: 4px; padding: 6px 0; }
+.semaine-ligne > .faint { width: 16px; flex: none; text-align: center; }
+.semaine-ligne select { flex: 1; min-width: 0; }
+.semaine-ligne .btn-icone { width: 38px; flex: none; }
+.absence { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px; font-size: 14px; color: var(--faint); }

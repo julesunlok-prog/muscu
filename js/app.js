@@ -49,7 +49,7 @@ export const ctx = {
   },
   remplacerEtat(s) { state = s; lectureEchouee = false; reel = null; enregistrer(); appliquerTheme(); afficher(); },
   get demo() { return !!reel; },
-  lancerDemo() { reel = state; state = { ...genererDemo(), settings: { ...state.settings } }; ctx.aller('#/programmes'); toast('Mode démo : 12 semaines de séances fictives.', 'info'); },
+  lancerDemo() { reel = state; const demo = genererDemo(); state = { ...demo, settings: { ...state.settings, semaine: demo.settings.semaine } }; /* réglages de l'utilisateur, semaine de la démo */ ctx.aller('#/programmes'); toast('Mode démo : 12 semaines de séances fictives.', 'info'); },
   quitterDemo() { state = reel; reel = null; ctx.aller('#/programmes'); majMinuteur(); toast('Démo quittée : tes données sont revenues.'); },
   aller(hash) { if (location.hash === hash) afficher(); else location.hash = hash; },
   // Ouvre la séance comme un tiroir qui monte par-dessus la page, puis l'affiche dessous et le tiroir s'efface.

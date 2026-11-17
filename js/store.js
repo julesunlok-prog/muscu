@@ -9,6 +9,7 @@ export function etatInitial() {
     exercises: EXERCICES_INITIAUX,
     templates: PROGRAMMES_INITIAUX,
     workouts: [],
+    sautees: [], // séances passées volontairement (semaine type)
     enCours: null,
     settings: { musclesPrioritaires: ['pectoraux'], ciblesVolume: {}, catalogue: CATALOGUE },
   });

@@ -9,7 +9,7 @@ import { ouvrirSimulation } from './simulation.js';
 import { barres, courbes, legende } from '../graph.js';
 import { esc, icon, fmtNum, fmtKg, fmtDate } from '../ui.js';
 
-let mode = 'semaine', muscleChoisi = null;
+let mode = 'semaine', muscleChoisi = null, periodeRegu = 8; // période de la régularité, en semaines
 const signe = n => `${n > 0 ? '+' : n < 0 ? '−' : ''}${fmtNum(Math.abs(n))}`;
 const carte = (titre, contenu, extra = '') => `<section class="card"><div class="card-tete"><h2 class="card-title">${titre}</h2>${extra}</div>${contenu}</section>`;
 const vide = texte => `<p class="muted" style="margin:0;font-size:14px">${texte}</p>`;
@@ -47,9 +47,10 @@ export function render(el, ctx) {
 
   el.onclick = e => {
     if (e.target.closest('button[data-simuler]')) return ouvrirSimulation(ctx);
-    const b = e.target.closest('[data-mode], [data-muscle]');
+    const b = e.target.closest('button[data-mode], button[data-muscle], button[data-regu]');
     if (!b) return;
     if (b.dataset.mode) mode = b.dataset.mode;
+    if (b.dataset.regu) periodeRegu = Number(b.dataset.regu);
     if (b.dataset.muscle) muscleChoisi = b.dataset.muscle;
     ctx.rendre(); // réaffiche via l'app : garde le défilement et le bandeau de la démo
   };
@@ -155,11 +156,13 @@ function frise(state, now) {
 }
 
 function regu(state, now) {
-  const r = regularite(state, now);
-  return carte('Régularité', `${barres(r.semaines, { cible: r.prevu, titre: 'Séances par semaine' })}
-    <div class="legende"><span>Jours d’entraînement par semaine</span><span><i class="pred" style="border-color:var(--muted)"></i>Prévu : ${r.prevu}</span></div>
+  const r = regularite(state, now, periodeRegu);
+  const choix = [[4, '1 mois'], [8, '2 mois'], [13, '3 mois']].map(([n, lib]) => `<button data-regu="${n}" aria-pressed="${n === periodeRegu}">${lib}</button>`).join('');
+  return carte('Régularité', `<div class="seg" role="group" aria-label="Période" style="margin-bottom:12px">${choix}</div>
+    ${barres(r.semaines, { cible: r.prevu, titre: 'Séances par semaine', troncons: true })}
+    <div class="legende"><span>Séances par semaine (un tronçon = une séance)</span><span><i class="pred" style="border-color:var(--muted)"></i>Objectif : ${r.prevu}</span></div>
     <p style="margin:10px 0 0;font-size:14px">${r.serie ? `<b>${r.serie} semaine${r.serie > 1 ? 's' : ''} complète${r.serie > 1 ? 's' : ''}</b> d’affilée.` : 'La semaine dernière n’était pas complète.'}
-      S’entraîner régulièrement est ce qui compte le plus.</p>${liensSources(['S19'])}`, '<span class="faint">8 semaines</span>');
+      S’entraîner régulièrement est ce qui compte le plus.</p>${liensSources(['S19'])}`);
 }
 
 function frequence(state, now, ordre) {

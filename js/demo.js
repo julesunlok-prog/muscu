@@ -34,7 +34,8 @@ export function genererDemo(now = new Date()) {
   debut.setDate(debut.getDate() - (debut.getDay() + 6) % 7 - 7 * 11); // lundi d'il y a 11 semaines
   for (let sem = 0; sem < 12; sem++) for (const [jour, prog] of [[0, 'push'], [2, 'pull'], [4, 'legs']]) {
     const d = new Date(debut); d.setDate(debut.getDate() + sem * 7 + jour);
-    if (d >= now || (sem === 6 && prog === 'legs')) continue; // une séance manquée
+    if (d >= now || (sem === 6 && prog === 'legs')) continue; // une séance manquée (ratée dans la semaine type)
+    if (sem === 9 && prog === 'pull') { s = { ...s, sautees: [...s.sautees, { id: 'demo-saut', templateId: 'pull', date: d.toISOString() }] }; continue; } // une séance passée
     let w = demarrer(s, prog, d);
     w.entrees.forEach((e, ei) => {
       const ex = E[e.exerciseId], f = forceA(e.exerciseId, sem + jour / 7);
@@ -52,5 +53,6 @@ export function genererDemo(now = new Date()) {
     const r = terminer(s, new Date(d.getTime() + (55 + Math.round(hasard() * 20)) * 60000));
     s = { ...s, enCours: null, workouts: [...s.workouts, r.workout] };
   }
-  return s;
+  const lundi = new Date(debut); lundi.setHours(0, 0, 0, 0);
+  return { ...s, settings: { ...s.settings, semaine: { periodes: [{ ordre: ['push', 'pull', 'legs'], depuis: lundi.toISOString() }], courts: {} } } };
 }

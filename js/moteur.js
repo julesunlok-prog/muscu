@@ -1,5 +1,6 @@
 // Moteur d'analyse (spec §6) : fonctions pures sur l'état.
 import { incrementPour, MUSCLES } from './profils.js';
+import { occurrences, ordreActuel } from './semaine.js';
 
 const fmt = n => String(Math.round(n * 100) / 100).replace('.', ',');
 
@@ -119,9 +120,10 @@ const zero = () => Object.fromEntries(MUSCLES.map(m => [m, 0]));
 const exDe = state => Object.fromEntries(state.exercises.map(e => [e.id, e]));
 
 // Comptage fractionnaire (S5) : 1 pour le muscle principal, 0,5 par muscle secondaire.
+// Avec une semaine type, chaque programme compte autant de fois qu'il y figure (0 s'il n'y est pas).
 export function volumePrevu(state) {
-  const v = zero(), E = exDe(state);
-  for (const t of state.templates) for (const it of t.items) ajouterVolume(v, E[it.exerciseId], it.series);
+  const v = zero(), E = exDe(state), occ = occurrences(state);
+  for (const t of state.templates) for (const it of t.items) ajouterVolume(v, E[it.exerciseId], it.series * (occ ? occ[t.id] ?? 0 : 1));
   return v;
 }
 
@@ -238,14 +240,15 @@ export function records(state) {
 }
 
 export function regularite(state, now = new Date(), semaines = 8) {
-  const prevu = state.templates.length;
-  const liste = lundis(now, semaines).map(d => {
+  const prevu = ordreActuel(state)?.length ?? state.templates.length;
+  const compter = n => lundis(now, n).map(d => {
     const fin = new Date(d); fin.setDate(fin.getDate() + 7);
     const ws = state.workouts.filter(w => dans(w.debut, d.getTime(), now) && Date.parse(w.debut) < fin.getTime());
-    return { x: d.getTime(), y: new Set(ws.map(w => jourLocal(w.debut))).size };
+    return { x: d.getTime(), y: ws.length }; // une unité par séance (deux le même jour = 2)
   });
-  let serie = 0; // semaines complètes consécutives, en partant de la dernière semaine terminée
-  for (let i = liste.length - 2; i >= 0 && prevu > 0 && liste[i].y >= prevu; i--) serie++;
+  const liste = compter(semaines), longue = compter(Math.max(13, semaines));
+  let serie = 0; // semaines complètes consécutives depuis la dernière terminée, sur 13 semaines quelle que soit la période affichée
+  for (let i = longue.length - 2; i >= 0 && prevu > 0 && longue[i].y >= prevu; i--) serie++;
   return { prevu, semaines: liste, serie };
 }
 
@@ -253,12 +256,12 @@ const seriesValides = (state, debut, now) => state.workouts.filter(w => dans(w.d
   .flatMap(w => w.entrees.flatMap(e => e.series.filter(serieValide)));
 
 export function frequenceMuscles(state, now = new Date(), semaines = 4) {
-  const E = exDe(state), debut = now.getTime() - semaines * 7 * JOUR;
+  const E = exDe(state), debut = now.getTime() - semaines * 7 * JOUR, T = Object.fromEntries(state.templates.map(t => [t.id, t]));
   const ws = state.workouts.filter(w => dans(w.debut, debut, now));
   return Object.fromEntries(MUSCLES.map(m => {
     const touche = e => E[e.exerciseId]?.musclePrincipal === m && e.series.some(serieValide);
     return [m, {
-      prevu: state.templates.filter(t => t.items.some(i => E[i.exerciseId]?.musclePrincipal === m)).length,
+      prevu: (ordreActuel(state) ?? state.templates.map(t => t.id)).filter(id => T[id]?.items.some(i => E[i.exerciseId]?.musclePrincipal === m)).length,
       reel: new Set(ws.filter(w => w.entrees.some(touche)).map(w => jourLocal(w.debut))).size / semaines,
     }];
   }));

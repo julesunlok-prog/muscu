@@ -2,6 +2,7 @@
 import { demarrer } from '../seance.js';
 import { NOM_MUSCLE } from '../profils.js';
 import { choisirDansBibliotheque } from './exercices.js';
+import { ordreActuel, cycles } from '../semaine.js';
 import { esc, icon, fmtDate, fmtChrono, ouvrirFeuille, fermerFeuille, confirmer, toast, champErreur } from '../ui.js';
 
 const derniere = (state, id) => state.workouts.filter(w => w.templateId === id).map(w => w.debut).sort().at(-1);
@@ -18,8 +19,11 @@ export function resume(t, E) {
 export function render(el, ctx) {
   const { state } = ctx;
   const E = Object.fromEntries(state.exercises.map(e => [e.id, e]));
-  // Prochaine séance de la rotation : le programme fait il y a le plus longtemps (jamais fait en premier). Seul lui a le bouton plein.
-  const prochain = [...state.templates].sort((a, b) => (derniere(state, a.id) ?? '').localeCompare(derniere(state, b.id) ?? ''))[0]?.id;
+  // Prochaine séance : celle du cycle si une semaine type existe, sinon le programme fait il y a le plus longtemps
+  // (jamais fait en premier). Seul lui a le bouton plein.
+  const cycle = cycles(state).courant;
+  const prochain = cycle ? cycle.cases[cycle.prochaine]?.templateId
+    : [...state.templates].sort((a, b) => (derniere(state, a.id) ?? '').localeCompare(derniere(state, b.id) ?? ''))[0]?.id;
   el.innerHTML = `
     <div class="page-header"><h1 class="page-title">Entraînement</h1>
       <button class="btn btn-secondary btn-sm" data-act="nouveau">${icon('plus')}Programme</button></div>
@@ -28,6 +32,7 @@ export function render(el, ctx) {
     ${!ctx.demo && !state.workouts.length && !state.enCours ? `<section class="card"><h2 class="card-title" style="margin-bottom:6px">Découvre l’app</h2>
       <p class="muted" style="margin:0 0 12px;font-size:14px">Lance la démo pour voir 12 semaines de séances fictives, les conseils de charge et toutes les analyses. Tes données ne sont pas touchées.</p>
       <button class="btn btn-secondary btn-bloc" data-lancer-demo>Voir la démo</button></section>` : ''}
+    ${carteSemaine(state, cycle, E)}
     ${state.templates.length ? state.templates.map(t => {
       const d = derniere(state, t.id), suivant = t.id === prochain && !state.enCours, r = resume(t, E);
       return `<section class="card programme" data-act="apercu" data-id="${esc(t.id)}">
@@ -45,6 +50,8 @@ export function render(el, ctx) {
     if (!b) return;
     const { act, id } = b.dataset;
     if (act === 'reprendre') return ctx.ouvrirSeance();
+    if (act === 'semaine') return editerSemaine(ctx);
+    if (act === 'passer') return passer(ctx, id);
     if (act === 'vide') return debuter(ctx, null);
     // « Débuter » passe par l'aperçu du programme, comme toucher la carte.
     if (act === 'debuter') return apercu(ctx, state.templates.find(t => t.id === id), E);
@@ -52,6 +59,95 @@ export function render(el, ctx) {
     if (act === 'editer') return editer(ctx, state.templates.find(t => t.id === id));
     if (act === 'nouveau') return editer(ctx, { id: 't' + Date.now(), nom: '', items: [] }, true);
   };
+}
+
+// Pastilles du cycle : nom court (sinon vrai nom tronqué), état faite / sautée / prochaine / à venir.
+const nomCourt = (state, id, courts = state.settings.semaine?.courts ?? {}) => courts[id] || state.templates.find(t => t.id === id)?.nom || '?';
+const pastilles = (state, cases, prochaine, courts) => `<div class="cycle">${cases.map((x, i) =>
+  `<span class="${x.etat}${i === prochaine ? ' ici' : ''}">${esc(nomCourt(state, x.templateId, courts))}${x.etat === 'faite' ? ' ✓' : ''}</span>`).join('')}</div>`;
+
+function carteSemaine(state, cycle, E) {
+  if (!cycle) return state.templates.length ? `<section class="card"><h2 class="card-title" style="margin-bottom:6px">Ta semaine</h2>
+    <p class="muted" style="margin:0 0 12px;font-size:14px">Indique l’ordre de tes séances sur 7 jours : l’app te proposera la suivante et comptera juste ton volume.</p>
+    <button class="btn btn-secondary btn-bloc" data-act="semaine">Définir ma semaine</button></section>` : '';
+  const t = state.templates.find(x => x.id === cycle.cases[cycle.prochaine].templateId), r = resume(t, E);
+  const passees = cycle.cases.filter(x => x.etat !== 'a_faire').length;
+  return `<section class="card">
+    <div class="card-tete" style="align-items:center"><h2 class="card-title">Ma semaine</h2>
+      <button class="btn btn-texte btn-sm" data-act="semaine">${cycle.jour ? `Jour ${cycle.jour} / 7` : 'Nouveau cycle'} · modifier</button></div>
+    ${pastilles(state, cycle.cases, cycle.prochaine)}
+    <div class="rail-cycle"><i style="width:${Math.round(passees / cycle.cases.length * 100)}%"></i></div>
+    <p style="margin:12px 0 0;font-size:15px"><b>Prochaine : ${esc(t.nom)}</b><span class="faint" style="display:block">${esc(r.muscles || 'Aucun exercice')} · ${r.detail}</span></p>
+    ${state.enCours ? '' : `<div class="semaine-actions"><button class="btn btn-primary" data-act="debuter" data-id="${esc(t.id)}">Débuter</button>
+      <button class="btn btn-secondary" data-act="passer" data-id="${esc(t.id)}">Passer</button></div>`}
+  </section>`;
+}
+
+function passer(ctx, templateId) {
+  const saut = { id: 's' + Date.now(), templateId, date: new Date().toISOString() };
+  ctx.maj(s => ({ ...s, sautees: [...(s.sautees ?? []), saut] }));
+  const nom = ctx.state.templates.find(t => t.id === templateId)?.nom ?? 'Séance';
+  toast(`${nom} passée.`, 'info', { libelle: 'Annuler', fn: () => ctx.maj(s => ({ ...s, sautees: (s.sautees ?? []).filter(x => x.id !== saut.id) })) });
+}
+
+// Feuille « Ma semaine » : ordre des séances (un programme peut revenir) et noms courts des pastilles.
+// Travaille sur une copie ; seul « Enregistrer » touche l'état. Changer l'ordre ouvre une nouvelle période (spec).
+function editerSemaine(ctx) {
+  const { state } = ctx, existe = !!ordreActuel(state);
+  const ordre = [...(ordreActuel(state) ?? [])], courts = { ...(state.settings.semaine?.courts ?? {}) };
+  const f = ouvrirFeuille({ titre: 'Ma semaine', corps: '<div data-corps></div>',
+    pied: `${existe ? '<button class="btn btn-texte" data-p="arreter">Ne plus suivre</button>' : ''}<button class="btn btn-primary" data-p="enregistrer">Enregistrer</button>` });
+  const corps = f.querySelector('[data-corps]');
+  const apercu = () => pastilles(state, ordre.map(templateId => ({ templateId, etat: 'a_faire' })), -1, courts);
+  const dessiner = () => {
+    const distincts = [...new Set(ordre)];
+    corps.innerHTML = `<p class="faint" style="margin:0 0 12px">Les séances dans l’ordre où tu les fais. Le cycle doit tenir en 7 jours. Un programme peut revenir plusieurs fois.</p>
+      <div class="label">Ordre</div>
+      <ul class="liste">${ordre.map((id, i) => `<li class="liste-ligne semaine-ligne">
+        <span class="faint">${i + 1}</span>
+        <select class="form-control" data-i="${i}" aria-label="Séance ${i + 1}">${state.templates.map(t => `<option value="${esc(t.id)}"${t.id === id ? ' selected' : ''}>${esc(t.nom)}</option>`).join('')}</select>
+        <button class="btn btn-texte btn-sm btn-icone" data-l="haut" data-i="${i}" aria-label="Monter"${i ? '' : ' disabled'}>↑</button>
+        <button class="btn btn-texte btn-sm btn-icone" data-l="bas" data-i="${i}" aria-label="Descendre"${i < ordre.length - 1 ? '' : ' disabled'}>↓</button>
+        <button class="btn btn-texte btn-sm btn-icone" data-l="retirer" data-i="${i}" aria-label="Retirer">${icon('close')}</button></li>`).join('')}</ul>
+      <button class="btn btn-secondary btn-bloc" data-l="ajouter" style="margin-top:8px">+ Ajouter une séance</button>
+      ${ordre.length ? `<div class="label" style="margin-top:20px">Noms courts (carte du haut)</div>
+        <ul class="liste">${distincts.map(id => `<li class="liste-ligne" style="cursor:default">
+          <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(state.templates.find(t => t.id === id)?.nom ?? '?')}</span>
+          <input class="form-control" style="width:96px;flex:none;text-align:center" data-court="${esc(id)}" maxlength="6" autocomplete="off" value="${esc(courts[id] ?? '')}" aria-label="Nom court"></li>`).join('')}</ul>
+        <div class="label" style="margin-top:20px">Aperçu</div><div data-apercu>${apercu()}</div>` : ''}`;
+  };
+  dessiner();
+  corps.addEventListener('click', e => {
+    const b = e.target.closest('button[data-l]');
+    if (!b) return;
+    const i = Number(b.dataset.i);
+    if (b.dataset.l === 'ajouter') ordre.push(state.templates[0].id);
+    if (b.dataset.l === 'retirer') ordre.splice(i, 1);
+    if (b.dataset.l === 'haut' && i > 0) [ordre[i - 1], ordre[i]] = [ordre[i], ordre[i - 1]];
+    if (b.dataset.l === 'bas' && i < ordre.length - 1) [ordre[i + 1], ordre[i]] = [ordre[i], ordre[i + 1]];
+    dessiner();
+  });
+  corps.addEventListener('change', e => { if (e.target.matches('select[data-i]')) { ordre[Number(e.target.dataset.i)] = e.target.value; dessiner(); } });
+  // Nom court : seul l'aperçu se redessine, pour garder le clavier ouvert.
+  corps.addEventListener('input', e => {
+    if (!e.target.dataset.court) return;
+    courts[e.target.dataset.court] = e.target.value;
+    corps.querySelector('[data-apercu]').innerHTML = apercu();
+  });
+  f.querySelector('.feuille-pied').addEventListener('click', e => {
+    const p = e.target.closest('button[data-p]')?.dataset.p;
+    if (!p) return;
+    const liste = p === 'arreter' ? [] : ordre;
+    ctx.maj(s => {
+      const sem = s.settings.semaine, periodes = sem?.periodes ?? [];
+      if (!sem && !liste.length) return s;
+      const nouvelle = liste.join() !== (ordreActuel(s) ?? []).join();
+      const propres = Object.fromEntries(Object.entries(courts).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v));
+      return { ...s, settings: { ...s.settings, semaine: { periodes: nouvelle ? [...periodes, { ordre: liste, depuis: new Date().toISOString() }] : periodes, courts: propres } } };
+    });
+    fermerFeuille(f);
+    toast(liste.length ? 'Semaine enregistrée.' : 'Semaine retirée.');
+  });
 }
 
 async function debuter(ctx, id) {
