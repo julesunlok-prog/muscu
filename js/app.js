@@ -203,6 +203,11 @@ document.getElementById('onglets').innerHTML = ONGLETS.map(([nom, ic, libelle]) 
 document.getElementById('reprise').querySelector('button').onclick = () => ctx.ouvrirSeance();
 window.addEventListener('hashchange', afficher);
 document.addEventListener('dblclick', e => e.preventDefault(), { passive: false }); // filet de sécurité anti-zoom iOS
+// Toucher un champ chiffré (poids, reps…) sélectionne sa valeur : on retape directement. Différé, sinon iOS replace le curseur après le toucher.
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (el.matches?.('input[inputmode="numeric"], input[inputmode="decimal"]')) setTimeout(() => { if (document.activeElement === el) el.setSelectionRange(0, el.value.length); }, 50);
+});
 document.addEventListener('click', e => {
   if (e.target.closest('[data-lancer-demo]')) ctx.lancerDemo();
   if (e.target.closest('[data-quitter-demo]')) ctx.quitterDemo();
