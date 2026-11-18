@@ -88,7 +88,7 @@ export function render(el, ctx) {
       if (c) { ecrireAdmin(c); afficherIdees(feuille); }
       else if (codeAdmin()) { ecrireAdmin(null); afficherIdees(feuille); }
       else feuille.querySelector('[data-idee-admin-zone]').innerHTML = `<div style="display:flex;gap:8px;margin-top:8px">
-        <input id="idee-code" class="form-control" placeholder="Code" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input id="idee-code" class="form-control" placeholder="Code" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false">
         <button class="btn btn-secondary" data-idee-admin>Valider</button></div>`;
     }
     if (e.target.closest('[data-act="exporter"]')) sauvegarder(ctx);
@@ -134,7 +134,7 @@ const MESSAGES_ALARME = {
   indisponible: 'Ajoute l’app à l’écran d’accueil (iOS 16.4+) pour activer l’alarme.',
 };
 
-// ---------- Boîte à idées (temporaire) : liste commune sur le serveur, l'admin (code du Worker) coche ce qui est fait ----------
+// ---------- Boîte à idées (temporaire) : liste commune sur le serveur, l'admin (secret ADMIN_IDEES du Worker) coche ce qui est fait ----------
 const K_ADMIN = 'muscu:idees-code';
 const codeAdmin = () => { try { return localStorage.getItem(K_ADMIN); } catch { return null; } };
 const ecrireAdmin = c => { try { c ? localStorage.setItem(K_ADMIN, c) : localStorage.removeItem(K_ADMIN); } catch { /* stockage indisponible */ } };
