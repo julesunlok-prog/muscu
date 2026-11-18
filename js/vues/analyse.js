@@ -1,6 +1,6 @@
 // Analyse : bilan du mois, volume, progression de la force, prédictions expliquées, régularité, fréquence,
 // équilibre poussée/tirage, zones de reps, proximité de l'échec (spec §4.5, §6).
-import { volumeSemaine, volumePrevu, ciblesVolume, alerteEpaules, fatigue, stagnation, prediction, verifierPrediction, sessionsDe,
+import { volumeSemaine, volumePrevu, ciblesVolume, VOLUME_MAX, alerteEpaules, fatigue, stagnation, prediction, verifierPrediction, sessionsDe,
   volumeParSemaine, progressionMuscles, progressionExercicesMuscle, records, regularite, frequenceMuscles, equilibre,
   repartitionReps, repartitionRir, bilanMois, lundis } from '../moteur.js';
 import { MUSCLES, MUSCLES_EN_OPTION, NOM_MUSCLE } from '../profils.js';
@@ -89,14 +89,14 @@ function volume(state, ordre, cibles, prio) {
       <button data-mode="semaine" aria-pressed="${mode === 'semaine'}">7 derniers jours</button>
       <button data-mode="prevu" aria-pressed="${mode === 'prevu'}">Programme prévu</button></div>
     ${ordre.map(m => {
-      const c = cibles[m], max = Math.max(c * 1.5, v[m]), p = prio.includes(m);
+      const c = cibles[m], max = Math.max(VOLUME_MAX * 1.25, v[m]), p = prio.includes(m), dans = v[m] >= c && v[m] <= VOLUME_MAX;
       return `<div class="jauge"><div class="jauge-tete"><span>${esc(NOM_MUSCLE[m])} ${p ? '<span class="badge acc">Prioritaire</span>' : ''}</span>
-        <span class="${v[m] >= c ? '' : 'muted'}">${fmtNum(v[m])} / ${c}</span></div>
-        <div class="jauge-rail"><div class="jauge-plein ${v[m] >= c ? 'pos' : p ? 'warn' : ''}" style="width:${v[m] / max * 100}%"></div>
-        <div class="jauge-cible" style="left:${c / max * 100}%" title="Cible"></div></div></div>`;
+        <span class="${v[m] >= c ? '' : 'muted'}">${fmtNum(v[m])} / ${c}–${VOLUME_MAX}</span></div>
+        <div class="jauge-rail"><div class="jauge-zone" style="left:${c / max * 100}%;width:${(VOLUME_MAX - c) / max * 100}%" title="Bonne zone"></div>
+        <div class="jauge-plein ${dans ? 'pos' : v[m] > VOLUME_MAX || p ? 'warn' : ''}" style="width:${v[m] / max * 100}%"></div></div></div>`;
     }).join('')}
-    <p class="faint" style="margin:4px 0 0">Une série compte 1 pour le muscle principal et 0,5 pour chaque muscle secondaire. Cible : au moins 10 séries par semaine, 14 pour un muscle prioritaire ; au-delà, les gains continuent mais diminuent.</p>
-    ${liensSources(['S4', 'S5'])}`);
+    <p class="faint" style="margin:4px 0 0">Une série proche de l’échec compte 1 pour le muscle principal et 0,5 pour chaque muscle secondaire. Bonne zone : 10 à 20 séries par semaine (16 à 20 pour un muscle prioritaire). Au-delà de 20, les gains continuent mais deviennent faibles, pour plus de fatigue et de temps.</p>
+    ${liensSources(['S4', 'S19', 'S34', 'S5', 'S36', 'S35'])}`);
 }
 
 function force(state, now, ordre, puces) {

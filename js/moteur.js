@@ -137,9 +137,13 @@ export function volumeSemaine(state, lundiISO) {
   return v;
 }
 
+// Zone de volume automatique, la même pour tous (aucune étude ne permet des chiffres par muscle) :
+// au moins 10 séries par semaine (S4, S19), 16 pour un muscle prioritaire, utile jusqu'à 20 (S34) ;
+// au-delà, les gains continuent mais deviennent faibles (S5, S36). Les anciennes cibles manuelles sont ignorées.
+export const VOLUME_MAX = 20;
 export function ciblesVolume(state) {
-  const { musclesPrioritaires, ciblesVolume: c } = state.settings;
-  return Object.fromEntries(MUSCLES.map(m => [m, c[m] ?? (musclesPrioritaires.includes(m) ? 14 : 10)]));
+  const prio = state.settings.musclesPrioritaires;
+  return Object.fromEntries(MUSCLES.map(m => [m, prio.includes(m) ? 16 : 10]));
 }
 
 export function alerteEpaules(state) {

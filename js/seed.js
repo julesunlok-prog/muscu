@@ -123,4 +123,7 @@ export const SOURCES = {
   S31: { titre: 'Chaves et al. 2020 — développé incliné : plus de croissance du haut des pectoraux (Int J Exerc Sci)', url: 'https://pubmed.ncbi.nlm.nih.gov/32922646/' },
   S32: { titre: 'Remmert, Pelland et al. 2025 (préprint) — au-delà de ~11 séries d’un muscle dans une même séance, plus de gain détectable', url: 'https://doi.org/10.51224/SRXIV.537' },
   S33: { titre: 'Zhang et al. 2025 — supersets : même croissance et même force, en moins de temps (méta-analyse)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC12011898/' },
+  S34: { titre: 'Baz-Valle et al. 2022 — 12 à 20 séries par muscle et par semaine chez des pratiquants entraînés ; au-delà de 20, pas mieux pour biceps et quadriceps (J Hum Kinet)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8884877/' },
+  S35: { titre: 'Baz-Valle et al. 2021 — compter les séries proches de l’échec (6 à 20+ reps) mesure bien le volume (J Strength Cond Res)', url: 'https://pubmed.ncbi.nlm.nih.gov/30063555/' },
+  S36: { titre: 'Schoenfeld et al. 2019 — chez des entraînés, plus de séries donne plus de muscle mais pas plus de force (Med Sci Sports Exerc)', url: 'https://pubmed.ncbi.nlm.nih.gov/30153194/' },
 };

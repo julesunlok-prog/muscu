@@ -1,7 +1,7 @@
 // « Analyser mes séances » : simulation de changements de programme pour atteindre les cibles de séries
 // (docs/superpowers/specs/2026-11-16-ajustement-programme-design.md). Fonctions pures : rien ne modifie l'état.
 import { MUSCLES, NOM_MUSCLE, PROFILS } from './profils.js';
-import { volumePrevu, volumeSemaine, ciblesVolume, alerteEpaules, lundis } from './moteur.js';
+import { volumePrevu, volumeSemaine, ciblesVolume, alerteEpaules, lundis, VOLUME_MAX } from './moteur.js';
 import { occurrences } from './semaine.js';
 import { BIBLIOTHEQUE, depuisBibliotheque } from './bibliotheque.js';
 import { norm } from './strong-import.js';
@@ -135,7 +135,7 @@ export function analyser(state, now = new Date()) {
   const premier = state.workouts.reduce((min, w) => w.debut < min ? w.debut : min, now.toISOString());
   const historique = now.getTime() - Date.parse(premier) >= 28 * JOUR;
   const vises = new Set([...prio, ...state.templates.flatMap(t => t.items.map(i => E0[i.exerciseId]?.musclePrincipal)).filter(Boolean)]);
-  const statut = (v, m) => v[m] < cibles[m] ? 'retard' : v[m] > 1.5 * cibles[m] ? 'beaucoup' : 'ok';
+  const statut = (v, m) => v[m] < cibles[m] ? 'retard' : v[m] > VOLUME_MAX ? 'beaucoup' : 'ok';
   const diagnostic = MUSCLES.map(m => ({ muscle: m, prevu: prevu[m], fait: fait[m], cible: cibles[m], statut: statut(prevu, m),
     prioritaire: prio.includes(m), vise: vises.has(m), moinsQuePrevu: historique && prevu[m] > 0 && fait[m] < 0.8 * prevu[m],
     sansPrincipal: !state.templates.some(t => t.items.some(i => E0[i.exerciseId]?.musclePrincipal === m)) }));
@@ -154,7 +154,7 @@ export function analyser(state, now = new Date()) {
   function exercicePour(m, tpl) {
     const sem = volumePrevu(etat), dans = new Set(tpl.items.map(i => i.exerciseId));
     const ailleurs = new Set(etat.templates.filter(t => t.id !== tpl.id).flatMap(t => t.items.map(i => i.exerciseId)));
-    const ok = x => x.musclePrincipal === m && !x.musclesSecondaires.some(s => sem[s] > 1.5 * cibles[s]);
+    const ok = x => x.musclePrincipal === m && !x.musclesSecondaires.some(s => sem[s] > VOLUME_MAX);
     const noms = new Set(etat.exercises.map(e => norm(e.nom)));
     const miens = etat.exercises.filter(e => !e.archive && !dans.has(e.id) && ok(e));
     const biblio = BIBLIOTHEQUE.filter(x => ok(x) && !noms.has(norm(x.nom)) && !dans.has(creesBiblio[x.nom]?.id));
@@ -245,7 +245,7 @@ export function analyser(state, now = new Date()) {
         const vs = volSeance(tpl, E)[m];
         for (const it of tpl.items) {
           const m2 = E[it.exerciseId]?.musclePrincipal;
-          if (!m2 || m2 === m || sem[m2] <= 1.5 * cibles[m2] || vs + it.series > MAX_SEANCE) continue;
+          if (!m2 || m2 === m || sem[m2] <= VOLUME_MAX || vs + it.series > MAX_SEANCE) continue;
           if (etat.templates.flatMap(t => t.items).filter(x => E[x.exerciseId]?.musclePrincipal === m2).length < 2) continue;
           const ex = exercicePour(m, tpl);
           if (!ex) break;

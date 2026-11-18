@@ -2,7 +2,6 @@
 import { exporterJSON, importerJSON } from '../store.js';
 import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts, programmesDepuis } from '../strong-import.js';
 import { BIBLIOTHEQUE, correspondanceAvecBibliotheque, creerDepuisCorrespondance, deviner } from '../bibliotheque.js';
-import { ciblesVolume } from '../moteur.js';
 import { lireNombre } from '../seance.js';
 import { activer, tester, desactiver, etat } from '../alarme.js';
 import { activerMontre, desactiverMontre, etatMontre, cleMontre } from '../montre.js';
@@ -12,7 +11,6 @@ import { esc, icon, ouvrirFeuille, fermerFeuille, confirmer, toast, telecharger,
 
 export function render(el, ctx) {
   const { settings } = ctx.state;
-  const cibles = ciblesVolume(ctx.state);
   const theme = settings.theme ?? 'auto';
   el.innerHTML = `<div class="page-header"><h1 class="page-title">Réglages</h1></div>
     <section class="card">
@@ -32,12 +30,10 @@ export function render(el, ctx) {
     </section>`}
 
     <section class="card">
-      <h2 class="card-title" style="margin-bottom:6px">Muscles prioritaires et cibles</h2>
-      <p class="faint" style="margin:0 0 10px">Séries par semaine. Un muscle prioritaire vise 14 par défaut, les autres 10.</p>
+      <h2 class="card-title" style="margin-bottom:6px">Muscles prioritaires</h2>
+      <p class="faint" style="margin:0 0 10px">L’app vise 10 à 20 séries par semaine pour chaque muscle, et 16 à 20 pour un muscle prioritaire.</p>
       ${MUSCLES.map(m => `<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--rule)">
-        <label class="case" style="flex:1"><input type="checkbox" data-prio="${m}" ${settings.musclesPrioritaires.includes(m) ? 'checked' : ''}>${esc(NOM_MUSCLE[m])}</label>
-        <input class="form-control" style="width:72px;height:36px;text-align:center" inputmode="numeric" data-cible="${m}"
-          value="${settings.ciblesVolume[m] ?? ''}" placeholder="${cibles[m]}" aria-label="Cible ${esc(NOM_MUSCLE[m])}"></div>`).join('')}
+        <label class="case" style="flex:1"><input type="checkbox" data-prio="${m}" ${settings.musclesPrioritaires.includes(m) ? 'checked' : ''}>${esc(NOM_MUSCLE[m])}</label></div>`).join('')}
       <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
         <label for="duree-max" style="flex:1;font-size:14px;margin:0">Durée max d’une séance (min)<span class="faint" style="display:block;font-size:12px">Utilisée par « Analyser mes séances ». 80 par défaut.</span></label>
         <input id="duree-max" class="form-control" style="width:72px;height:36px;text-align:center" inputmode="numeric" data-duree-max
@@ -97,11 +93,6 @@ export function render(el, ctx) {
       const set = new Set(s.settings.musclesPrioritaires);
       i.checked ? set.add(i.dataset.prio) : set.delete(i.dataset.prio);
       return { ...s, settings: { ...s.settings, musclesPrioritaires: MUSCLES.filter(m => set.has(m)) } };
-    });
-    if (i.dataset.cible) ctx.maj(s => {
-      const c = { ...s.settings.ciblesVolume }, n = lireNombre(i.value);
-      if (n == null) delete c[i.dataset.cible]; else c[i.dataset.cible] = n;
-      return { ...s, settings: { ...s.settings, ciblesVolume: c } };
     });
     if ('dureeMax' in i.dataset) ctx.maj(s => {
       const n = lireNombre(i.value), { dureeMax, ...reste } = s.settings;
