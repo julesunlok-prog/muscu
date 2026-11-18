@@ -504,4 +504,6 @@ button.liste-ligne { width: 100%; background: none; border: 0; font: inherit; te
 .ligne-droite { display: flex; align-items: center; gap: 6px; flex: none; }
 .puces-grille { display: flex; flex-wrap: wrap; gap: 6px; }
 .puces-grille button { height: 36px; padding: 0 14px; border-radius: var(--pilule); border: 0; background: var(--chip); color: var(--muted); font-size: 14px; font-weight: 500; cursor: pointer; transition: background var(--tr), color var(--tr); }
+.idee { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.idee:last-child { border-bottom: 0; }
 .puces-grille button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); font-weight: 600; }

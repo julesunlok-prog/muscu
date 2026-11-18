@@ -3,7 +3,7 @@ import { exporterJSON, importerJSON } from '../store.js';
 import { lireStrong, nomsExercicesStrong, correspondanceAuto, versWorkouts, programmesDepuis } from '../strong-import.js';
 import { BIBLIOTHEQUE, correspondanceAvecBibliotheque, creerDepuisCorrespondance, deviner } from '../bibliotheque.js';
 import { lireNombre } from '../seance.js';
-import { activer, tester, desactiver, etat } from '../alarme.js';
+import { activer, tester, desactiver, etat, SERVEUR } from '../alarme.js';
 import { activerMontre, desactiverMontre, etatMontre, cleMontre } from '../montre.js';
 import { MUSCLES, NOM_MUSCLE, MATERIELS } from '../profils.js';
 import { SOURCES } from '../seed.js';
@@ -46,6 +46,9 @@ export function render(el, ctx) {
       <ul class="liste" style="margin-top:8px">${ligne('data-ouvrir="importer"', 'Importer…')}</ul>
     </section>
 
+    <h2 class="groupe-titre">Idées et corrections</h2>
+    <section class="card"><ul class="liste">${ligne('data-ouvrir="idees"', 'Proposer une idée ou signaler un bug')}</ul></section>
+
     <h2 class="groupe-titre">L’app</h2>
     <section class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding-left:8px"><span>Thème</span>
@@ -75,7 +78,19 @@ export function render(el, ctx) {
       return { ...s, settings: { ...s.settings, musclesPrioritaires: MUSCLES.filter(m => set.has(m)) } };
     });
     const o = e.target.closest('[data-ouvrir]')?.dataset.ouvrir;
-    if (o) { const f = ouvrirFeuille(FEUILLES[o]()); f.addEventListener('click', clic); f.onchange = change; }
+    if (o) { const f = ouvrirFeuille(FEUILLES[o]()); f.addEventListener('click', clic); f.onchange = change; if (o === 'idees') afficherIdees(f); }
+    if (feuille && e.target.closest('[data-idee-envoyer]')) envoyerIdee(feuille);
+    const sup = e.target.closest('[data-idee-suppr]')?.dataset.ideeSuppr;
+    if (feuille && sup) confirmer('Supprimer cette idée pour tout le monde ?', { titre: 'Supprimer', ok: 'Supprimer', danger: true })
+      .then(ok => ok && afficherIdees(feuille, idees('/idees/supprimer', { n: +sup })));
+    if (feuille && e.target.closest('[data-idee-admin]')) {
+      const c = feuille.querySelector('#idee-code')?.value.trim();
+      if (c) { ecrireAdmin(c); afficherIdees(feuille); }
+      else if (codeAdmin()) { ecrireAdmin(null); afficherIdees(feuille); }
+      else feuille.querySelector('[data-idee-admin-zone]').innerHTML = `<div style="display:flex;gap:8px;margin-top:8px">
+        <input id="idee-code" class="form-control" placeholder="Code" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-secondary" data-idee-admin>Valider</button></div>`;
+    }
     if (e.target.closest('[data-act="exporter"]')) sauvegarder(ctx);
     const a = e.target.closest('[data-alarme]')?.dataset.alarme;
     // activer() est appelée sans attente avant : iOS n'accorde la permission de notifications qu'en réponse directe au toucher.
@@ -99,6 +114,7 @@ export function render(el, ctx) {
       const n = lireNombre(i.value), { dureeMax, ...reste } = s.settings;
       return { ...s, settings: n == null ? reste : { ...reste, dureeMax: Math.min(180, Math.max(30, Math.round(n))) } };
     });
+    if (i.dataset.ideeFait) afficherIdees(i.closest('.feuille'), idees('/idees/fait', { n: +i.dataset.ideeFait, fait: i.checked }));
     if (i.dataset.fichier && i.files[0]) {
       const texte = await i.files[0].text();
       i.value = '';
@@ -118,7 +134,51 @@ const MESSAGES_ALARME = {
   indisponible: 'Ajoute l’app à l’écran d’accueil (iOS 16.4+) pour activer l’alarme.',
 };
 
+// ---------- Boîte à idées (temporaire) : liste commune sur le serveur, l'admin (code du Worker) coche ce qui est fait ----------
+const K_ADMIN = 'muscu:idees-code';
+const codeAdmin = () => { try { return localStorage.getItem(K_ADMIN); } catch { return null; } };
+const ecrireAdmin = c => { try { c ? localStorage.setItem(K_ADMIN, c) : localStorage.removeItem(K_ADMIN); } catch { /* stockage indisponible */ } };
+
+// La liste à jour, ou le statut HTTP (0 = réseau).
+async function idees(route, corps = {}) {
+  try {
+    const r = await fetch(SERVEUR + route, { method: 'POST', body: JSON.stringify(corps), signal: AbortSignal.timeout(8000),
+      headers: { 'Content-Type': 'application/json', ...(codeAdmin() ? { Authorization: `Bearer ${codeAdmin()}` } : {}) } });
+    return r.ok ? (await r.json()).idees : r.status;
+  } catch { return 0; }
+}
+
+async function afficherIdees(f, promesse = idees('/idees/lire')) {
+  const zone = f.querySelector('[data-idees]'), liste = await promesse;
+  if (!f.isConnected) return;
+  if (liste === 401) { ecrireAdmin(null); toast('Code refusé.', 'error'); return afficherIdees(f); }
+  if (!Array.isArray(liste)) { zone.innerHTML = '<p class="faint">Pas de réponse du serveur : vérifie le réseau.</p>'; return; }
+  const admin = !!codeAdmin();
+  const triees = [...liste].sort((a, b) => a.fait - b.fait || b.n - a.n); // à faire d'abord, les plus récentes en haut
+  zone.innerHTML = triees.length ? `<ul class="liste">${triees.map(i => `<li class="idee">
+      ${admin ? `<label class="case" style="flex:1"><input type="checkbox" data-idee-fait="${i.n}" ${i.fait ? 'checked' : ''}><span>${esc(i.texte)}</span></label>
+        <button class="btn btn-texte" data-idee-suppr="${i.n}" aria-label="Supprimer">${icon('poubelle')}</button>`
+      : `<span style="flex:1">${esc(i.texte)}</span>${i.fait ? '<span class="badge pos">Ajoutée</span>' : ''}`}</li>`).join('')}</ul>`
+    : '<p class="faint">Aucune idée pour l’instant. Sois le premier !</p>';
+  f.querySelector('[data-idee-admin-zone]').innerHTML = `<button class="btn btn-texte" data-idee-admin>${admin ? 'Quitter le mode admin' : 'Je suis l’admin'}</button>`;
+}
+
+async function envoyerIdee(f) {
+  const champ = f.querySelector('#idee-texte'), texte = champ.value.trim();
+  if (texte.length < 3) return toast('Écris ton idée d’abord.', 'error');
+  const r = idees('/idees', { texte });
+  const liste = await r;
+  if (Array.isArray(liste)) { champ.value = ''; toast('Merci, c’est noté !'); }
+  else toast(liste === 409 ? 'La liste est pleine pour l’instant.' : 'Pas de réponse du serveur : vérifie le réseau.', 'error');
+  afficherIdees(f, r);
+}
+
 const FEUILLES = {
+  idees: () => ({ titre: 'Idées et corrections', corps: `<p class="faint" style="margin:0 0 10px">Une idée d’ajout ou un bug ? Écris-le ici : tout le monde voit la liste, et « Ajoutée » s’affiche quand c’est fait.</p>
+    <textarea id="idee-texte" class="form-control" maxlength="300" placeholder="Ex. : pouvoir noter mon poids de corps"></textarea>
+    <button class="btn btn-primary btn-bloc" style="margin-top:8px" data-idee-envoyer>Envoyer</button>
+    <div data-idees style="margin-top:16px"><p class="faint">Chargement…</p></div>
+    <div data-idee-admin-zone style="text-align:center;margin-top:8px"></div>` }),
   // Alarme de repos (spec 2026-11-15) : notification à la fin du repos, même app fermée.
   alarme: () => {
     const e = etat();
