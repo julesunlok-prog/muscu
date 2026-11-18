@@ -73,7 +73,7 @@ export function render(el, ctx) {
     if (e.target.closest('[data-act="exporter"]')) sauvegarder(ctx);
     const a = e.target.closest('[data-alarme]')?.dataset.alarme;
     // activer() est appelée sans attente avant : iOS n'accorde la permission de notifications qu'en réponse directe au toucher.
-    if (a === 'activer') activer(el.querySelector('#alarme-code').value.trim()).then(r => {
+    if (a === 'activer') activer().then(r => {
       toast(MESSAGES_ALARME[r], r === 'ok' ? undefined : 'error');
       if (r === 'ok') ctx.rendre();
     });
@@ -125,8 +125,6 @@ function carteAlarme() {
         <button class="btn btn-texte" style="flex:1" data-alarme="desactiver">Désactiver</button></div>`
       : `${e === 'refusee' ? `<p class="faint" style="margin:0 0 10px">${MESSAGES_ALARME.refuse}</p>` : ''}
       ${e === 'indisponible' ? `<p class="faint" style="margin:0 0 10px">${MESSAGES_ALARME.indisponible}</p>` : ''}
-      <div class="form-group"><label for="alarme-code">Code</label>
-        <input id="alarme-code" class="form-control" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
       <button class="btn btn-primary btn-bloc" data-alarme="activer">Activer</button>`}
   </section>`;
 }

@@ -5,7 +5,8 @@
 export const SERVEUR = 'https://muscu-alarme.julesunlok.workers.dev'; // Worker Cloudflare (serveur/)
 export const VAPID_PUBLIQUE = 'BNsfPt9Pn0AGmwMYVTPBXViZCq5erTJit71R1dY-RqRr4x4hdOPG924uZY8LwqHkjCWpR2DEIVbkOkt9vTW6Xjs'; // clé publique VAPID (pas un secret)
 
-const K = { code: 'muscu:alarme-code', id: 'muscu:alarme-id', dernier: 'muscu:alarme' };
+const K = { actif: 'muscu:alarme-code', // nom historique : les alarmes déjà activées le restent
+   id: 'muscu:alarme-id', dernier: 'muscu:alarme' };
 const lire = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const ecrire = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* stockage indisponible */ } };
 const dernierEnvoi = () => { try { return JSON.parse(lire(K.dernier)); } catch { return null; } };
@@ -41,10 +42,10 @@ export function idAppareil() {
 }
 
 // Statut HTTP de la requête, ou 0 si le réseau a échoué.
-async function requete(methode, route, corps, code = lire(K.code)) {
+async function requete(methode, route, corps) {
   try {
     const r = await fetch(SERVEUR + route, { method: methode, body: JSON.stringify({ id: idAppareil(), ...corps }),
-      headers: { Authorization: `Bearer ${code}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(8000) }); // réseau faible : on abandonne pour ne pas bloquer les demandes suivantes
     return r.status;
   } catch { return 0; }
@@ -54,7 +55,7 @@ const reussi = statut => statut >= 200 && statut < 300;
 let enVol = false, enAttente = null;
 // Appelée après chaque changement d'état, au retour du réseau et au retour au premier plan.
 export async function synchroniser(state, { demo = false } = {}) {
-  if (demo || !SERVEUR || !lire(K.code)) return;
+  if (demo || !SERVEUR || !lire(K.actif)) return;
   if (enVol) { enAttente = state; return; } // une demande à la fois ; on rejoue avec l'état le plus récent
   const b = besoin(state.enCours?.repos ?? null, dernierEnvoi(), Date.now());
   if (!b) return;
@@ -74,11 +75,11 @@ const disponible = () => !!SERVEUR && typeof window !== 'undefined' && 'PushMana
 export function etat() {
   if (!disponible()) return 'indisponible';
   if (Notification.permission === 'denied') return 'refusee';
-  return lire(K.code) ? 'activee' : 'desactivee';
+  return lire(K.actif) ? 'activee' : 'desactivee';
 }
 
 // À appeler directement dans le gestionnaire du toucher : iOS n'accorde la permission qu'en réponse à un geste.
-export async function activer(code) {
+export async function activer() {
   if (!disponible()) return 'indisponible';
   if (await Notification.requestPermission() !== 'granted') return 'refuse';
   let abonnement;
@@ -87,10 +88,9 @@ export async function activer(code) {
     abonnement = await reg.pushManager.getSubscription()
       ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uDec(VAPID_PUBLIQUE) });
   } catch { return 'reseau'; }
-  const statut = await requete('PUT', '/abonnement', { subscription: abonnement.toJSON() }, code);
-  if (statut === 401) return 'code';
+  const statut = await requete('PUT', '/abonnement', { subscription: abonnement.toJSON() });
   if (!reussi(statut)) return 'reseau';
-  ecrire(K.code, code);
+  ecrire(K.actif, '1');
   return 'ok';
 }
 
@@ -99,5 +99,5 @@ export const tester = async () => reussi(await requete('PUT', '/alarme', { fin: 
 export async function desactiver() {
   await requete('DELETE', '/abonnement', {});
   try { await (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.unsubscribe(); } catch { /* déjà désabonné */ }
-  ecrire(K.code, null); ecrire(K.dernier, null);
+  ecrire(K.actif, null); ecrire(K.dernier, null);
 }
