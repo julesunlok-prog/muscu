@@ -497,3 +497,11 @@ details.explication p, details.explication ul { margin: 0 0 8px; }
 .absence { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px; font-size: 14px; color: var(--faint); }
 .cycle .en_cours { background: var(--accent-soft); color: var(--accent-ink); }
 .jauge-zone { position: absolute; top: 0; bottom: 0; background: var(--pos); opacity: .28; } /* bonne zone de séries (cible → 20) */
+
+/* ---------- Réglages : groupes, lignes qui ouvrent une feuille, pastilles à choix multiple ---------- */
+.groupe-titre { font-size: 13px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; margin: 22px 4px 8px; }
+button.liste-ligne { width: 100%; background: none; border: 0; font: inherit; text-align: left; }
+.ligne-droite { display: flex; align-items: center; gap: 6px; flex: none; }
+.puces-grille { display: flex; flex-wrap: wrap; gap: 6px; }
+.puces-grille button { height: 36px; padding: 0 14px; border-radius: var(--pilule); border: 0; background: var(--chip); color: var(--muted); font-size: 14px; font-weight: 500; cursor: pointer; transition: background var(--tr), color var(--tr); }
+.puces-grille button[aria-pressed="true"] { background: var(--btn); color: var(--btn-ink); font-weight: 600; }
